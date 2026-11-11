@@ -1,0 +1,20 @@
+I'm working out what the game is from the encoder weights, going through each input row by its magnitude. The x and y inputs look moderate, around 0.1 and 0.2, while heading is tiny, and I'm now checking the other agent's x input.
+
+I'm going through the rest of the encoder inputs: target distance and contact look moderate, and the cooldown weights are the largest, even though that input stays small. I'm also weighing the done and hold-still inputs and the visibility score, which has large weights despite a narrow range.
+
+I'm checking which input rows still look like untouched initialization, and the heading rows, the other-heading row, hold-still, wall, and obstacle all sit near the small starting scale. The position, distance, contact, cooldown, done, and visibility rows have clearly been learned. Hold-still looks weakly used, though a few of its output-side weights are still large.
+
+I'm weighing whether the game is hide-and-seek or tag, since the contact flag and cooldown point toward being caught by the other agent, and the visibility score suggests hiding near occlusion edges matters too. The target distance also looks learned, so I'm wondering if it's a chase toward a goal.
+
+I'm thinking the game could be a capture-the-flag style setup, where the target draws the agent while the other agent tries to tag it. Since the hold-still and wall weights barely moved, freezing behind obstacles doesn't seem to matter much here.
+
+I'm weighing whether the game might be hide-and-seek instead, where the controlled agent tries to stay unseen and contact means it was found. The visibility weights fit that, and the low target-distance signal could just be redundant with position.
+
+I'm looking at the cooldown weight, which is large and negative, so the network clearly encodes the post-contact state. I'm wondering whether roles might swap after a tag, but the agent has no way to observe who is "it" beyond the cooldown, so I'm guessing the other agent is always the tagger.
+
+I'm settling on tag or hide-and-seek as the likely game, with the controlled agent evading a chaser, since the visibility score is strongly weighted and contact needs mutual sight. The hold-still weights look unused, which argues against freezing as a tactic.
+
+I'm checking the hold-still column of the policy layer: its bias is small, but a few units with high gain carry large weights on x, y, and hold. Those units look like they drive movement, and in some cases they also switch the hold output, so holding still may come up occasionally even though the hold-still input itself barely matters.
+
+I'm settling on tag as the likely game, with the controlled agent evading a chaser and getting penalized on each contact, and I'm guessing it also gets a small reward for each step it stays free. My confidence in that read is only about 35%.
+

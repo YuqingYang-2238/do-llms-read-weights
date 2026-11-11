@@ -1,0 +1,5 @@
+**Working on latent features**
+
+I'm thinking about deriving latent features for proximity by reading weights, which seems complicated but doable manually with a forward or linear decoder approximation. I can add a few new units in P1 and P2 while keeping the rest, overlaying y bias for gated proximity and relative orientation. Designing a detector from just the encoder z might help. I could also modify output y standard deviation to enable escape candidates while maintaining the same mean. The user expects solid results without giving up survival to change fewer weights!**Evaluating model performance**
+
+I'm thinking about how broadening the evaluation of terminal Q could lead to assessing states with both randomly risky and safe continuations. It's a bit tricky because while it could degrade the ranking, it doesn’t necessarily mean it’s safer. I also want to consider that preserving the encoder hidden models may lack the sensitivity needed, which feels stronger than the current proposal. There’s quite a lot to untangle here!

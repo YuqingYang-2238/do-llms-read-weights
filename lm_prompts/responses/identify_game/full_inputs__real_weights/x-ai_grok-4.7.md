@@ -1,0 +1,24 @@
+---
+model: x-ai/grok-4.7
+provider: xAI
+prompt: lm_prompts/identify_game/full_inputs__real_weights.txt
+prompt_sha256: 34e822fa940f9c26e30b7f9d2f32ae3871a554ba6e55044bd63eee2b306ef568
+prompt_chars: 113692
+reasoning_effort: high
+timestamp: 2026-11-09T15:20:18
+elapsed_s: 808.3
+finish_reason: stop
+prompt_tokens: 70137
+completion_tokens: 46925
+reasoning_tokens: 45614
+cost_usd: 0.420096
+---
+Observations: Encoder row magnitudes (approx. L1) rank the inputs clearly. Cooldown (input 8) is the largest and the only global mode switch: quoted weights include -1.286, -0.497, 0.324, -0.291, 0.223, -0.244, -0.219; at 0.5 s that -1.286 term alone (~-0.64 pre-LN) swamps a 64-unit layer, so the latent state after a contact is a different regime from normal play. Visibility-change (input 11) is next: -0.444, -0.428, -0.313, -0.274, -0.256, 0.236, 0.228, 0.211, both signs, so it is a geometric feature, not a monotone “go to high visibility” drive. Distance to the fixed target (input 6) is third among task inputs: -0.234, -0.191, -0.180, -0.164, 0.151, 0.135; it shares columns with visibility (e.g. both strongly negative into E1 unit 22: -0.234 and -0.444). Own y (input 1, peak -0.213, 0.189, 0.172) outweighs own x (input 0, peak -0.166, 0.131); other-agent y/x when in sight (inputs 4 and 3, peaks 0.176 and -0.187) are in the same band and are exactly 0 when line of sight is blocked, so “seen vs unseen” is a hard branch. Contact pulse (input 7) is only moderate (peak -0.175) and is not a copy of the cooldown row (opposite signs on E1 units 39, 49, 55, 58). Dead rows: own heading (input 2; almost all |w|<0.02, one -0.101), other heading (input 5; max about -0.080), wall-adjacent (input 12; max ~0.072), obstacle-adjacent (input 13; max ~0.090). Previous hold-still (input 10) is weak (one -0.148).
+
+Output layer: b3 = 0.091, 0.007, 0.061, 0.095, 0.111, 0.049, so the resting proposal is a destination near the bottom-left, not a hold (tanh(0.061)≪0.5). P3 is sparse. Destination x is a real left/right choice, not a one-way march: +0.978 and +0.996 (rows 8 and 67) vs -1.222 and -0.896 (rows 21 and 80). Destination y likewise: +0.555, +0.565 vs -1.116 (row 87) and -0.545. Hold-still is a competed binary, not a default: row 5 is 0.141, 0.007, 0.894 with LayerNorm scale g_p2[5]=2.556 and shift -0.283 (usually off, high gain); row 21 is -1.222, 0.312, -0.891 with g_p2[21]=2.285 (go to the left edge and do not freeze); row 87 is 0.009, -1.116, 0.725 (bottom of the arena, or freeze if already in cover). Log-std columns stay small, so this is a confident, low-entropy policy. Because a[0], a[1] are waypoints and the controller already pathfinds, state-dependent left and right destinations mean the agent deliberately goes to different places, not always to one goal.
+
+Reasoning: Headings unused ⇒ line of sight is obstacle occlusion, not a facing cone the policy must aim; the visibility-change lookup already folds in cell and heading. Wall/obstacle bits unused ⇒ freeze is chosen from geometry and game state, and the environment merely gates it. That rules out open-field tag, heading-aimed shooting, and any task that is only “am I touching a wall?”. Pure navigation to the target is ruled out because other-agent position, contact, and especially the cooldown timer dominate the encoder; a world model trained jointly with the reward head would not spend its largest weight on a 2-step timer unless contact reward is gated by that timer. Pure tag with no location structure is ruled out by the heavy target-distance row and the default bottom-left waypoint. Herding is a poor fit: the engineered feature is unsigned view-change of the arena, and freeze-beside-cover is a first-class output. What remains is partially observable pursuit in cover: search or stealth along visibility boundaries, a contact event that only counts in line of sight, a 0.5 s refractory period that flips the whole policy, and a fixed base/target the waypoints are organized around. Seeker rather than hider: the view-change input is an information-gain feature (how much arena enters or leaves view), contact/cooldown is the represented scoring event, freeze is usually off and only high-gain (peek or ambush, not default camping), and the policy keeps strong “push into the arena” waypoints (x→1) as well as “back to the left edge.” A hider whose only job was to camp would have tied a[2] to inputs 12/13 and left them large; those rows are ~0.
+
+Game: Hide-and-seek (line-of-sight tag), controlled agent as the seeker
+Description: The seeker pathfinds through an obstacle arena to bring the other agent into view and is rewarded for contacting it while the two can see each other; a 0.5 s cooldown blocks immediate re-tags, and a fixed target/base (default waypoint near the bottom-left, with a strong return-to-the-left-wall mode) anchors the search between peeks and freezes beside cover.
+Confidence: 60%

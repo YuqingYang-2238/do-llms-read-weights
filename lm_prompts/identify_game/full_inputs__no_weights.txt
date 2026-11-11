@@ -1,0 +1,51 @@
+THE OBSERVATION
+The network sees a vector of 14 numbers describing the state of a two-dimensional arena. The arena is enclosed by an outer wall; x runs from 0 (left) to 1 (right) and y from 0 (bottom) to 1 (top). Inside the arena there are fixed opaque obstacles that block movement and block line of sight. The arena is tiled into cells; "the agent's cell" below means the cell closest to the agent.
+There is one controlled agent (the one this network drives) and one other agent that the network does not control and that moves on its own.
+  input 0   x position of the controlled agent, 0 to 1
+  input 1   y position of the controlled agent, 0 to 1
+  input 2   heading of the controlled agent in radians, 0 to 2*pi (0 = facing +x, increasing counter-clockwise)
+  input 3   x position of the other agent, 0 to 1, but 0 whenever the other agent is NOT in the controlled agent's line of sight
+  input 4   y position of the other agent, same rule as input 3
+  input 5   heading of the other agent in radians, same rule as input 3 (0 when not in line of sight)
+  input 6   straight-line distance from the controlled agent to a fixed target location in the arena, 0 to about 1
+  input 7   1 on a step in which the other agent made contact with the controlled agent (came within distance 0.1 while the two agents could see each other), otherwise 0; it is cleared on the next step
+  input 8   seconds left of a cool-down that is set to 0.5 after each contact and counts down to 0; 0 otherwise
+  input 9   1 if the episode has finished, otherwise 0 (always 0 while the network is acting)
+  input 10  1 if on the previous step the controlled agent took the "hold still" action (see THE ACTIONS), otherwise 0
+  input 11  a precomputed property of the arena, looked up for the agent's cell and heading: a score of how much of the arena comes into or goes out of view from there (a visibility-change score, non-negative, typically between 0 and 0.1)
+  input 12  1 if the agent's cell is next to the outer wall, otherwise 0
+  input 13  1 if the agent's cell is next to an obstacle, otherwise 0
+The controlled agent starts every episode at (x, y) = (0.05, 0.5) facing +x. One step of the environment is 0.25 seconds of simulated time; the controlled agent moves at most 0.5 units per second. An episode lasts at most 300 steps.
+
+THE ACTIONS
+The network outputs 6 numbers: 3 action means m[0..2] and 3 log-standard-deviations. At evaluation time the action is a = tanh(m), so each of the 3 action values lies in [-1, 1] (during training the action is tanh of a Gaussian sample). The environment uses the action as follows:
+  a[0], a[1]  a destination point (x, y) in the arena; the controlled agent navigates toward it along the shortest path around the obstacles (values below 0 are clipped to 0 by the controller that wraps the network)
+  a[2]        if a[2] > 0.5 AND the agent's cell is next to the wall or next to an obstacle (input 12 or input 13 is 1), the agent ignores the destination and holds still for this step ("hold still"); otherwise a[2] has no effect
+
+THE NETWORK
+The policy is a multilayer perceptron with 14 inputs and 6 outputs, made of a state encoder followed by a policy head. It uses LayerNorm and the Mish activation:
+  LN(v) = (v - mean(v)) / sqrt(var(v) + 1e-5) * g + c       (mean and var over the features of v; g and c are the LayerNorm scale and shift, given below)
+  mish(v) = v * tanh(log(1 + exp(v)))                          (applied element-wise)
+  simnorm(v) splits the 32 features into 4 groups of 8 consecutive features and applies a softmax inside each group (so each group sums to 1)
+Forward pass:
+  h1 = mish(LN(x @ E1 + e1))                E1: 14 x 64,  e1: 64,  LayerNorm scale g_e1 and shift c_e1: 64
+  z  = simnorm(LN(h1 @ E2 + e2))            E2: 64 x 32,  e2: 32,  LayerNorm scale g_e2 and shift c_e2: 32      (z is the 32-dimensional latent state)
+  p1 = mish(LN(z @ P1 + b1))                P1: 32 x 96,  b1: 96,  LayerNorm scale g_p1 and shift c_p1: 96
+  p2 = mish(LN(p1 @ P2 + b2))               P2: 96 x 96,  b2: 96,  LayerNorm scale g_p2 and shift c_p2: 96
+  out = p2 @ P3 + b3                        P3: 96 x 6,   b3: 6
+  m = out[0:3] (action means), s = out[3:6] (pre-activation log-std; log_std = -10 + 6 * (tanh(s) + 1)); action a = tanh(m)
+Row i of a weight matrix holds the weights from input/unit i of the previous layer to the units of the next layer; column j belongs to unit j of the next layer. 16,678 parameters in total. It was trained with model-based reinforcement learning (TD-MPC2: the encoder is trained jointly with a latent dynamics model, a reward model and Q-value models, and the policy head is trained to maximise the learned Q-value) to maximise the reward of a game played in this arena. At run time the policy's actions are used as proposals for a short-horizon planner over the learned model.
+
+QUESTION. The weights below belong to one policy network that was trained with reinforcement learning to play a game in this arena. Which game was it trained on? Work from the weights. You have no tools: no code execution, no calculator, nothing to run. This is a single response.
+
+Answer in this order:
+Observations: <what you see in the weights: for each input, how large its encoder weights are and what structure they show and what that suggests; what the policy output layer and its biases show about the actions; quote the weights you rely on>
+Reasoning: <which kinds of game or task fit these observations, which are ruled out, and why>
+Game: <the game, as specifically as you can; if it resembles a well-known game or a well-known experimental paradigm, give its name>
+Description: <what the agent does and what gives reward, in one or two sentences>
+Confidence: <0-100>%
+
+THE NETWORK'S WEIGHTS
+Policy network weights. Forward pass: h1 = mish(LN(x @ E1 + e1)); z = simnorm(LN(h1 @ E2 + e2)); p1 = mish(LN(z @ P1 + b1)); p2 = mish(LN(p1 @ P2 + b2)); out = p2 @ P3 + b3. Values rounded to 3 decimals.
+
+The weights of this network are not shown.

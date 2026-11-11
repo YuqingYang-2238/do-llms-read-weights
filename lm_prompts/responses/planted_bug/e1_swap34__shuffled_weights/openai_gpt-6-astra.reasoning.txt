@@ -1,0 +1,15 @@
+**Analyzing data trends**
+
+I'm looking at some data trends and noticing that if I flip things around, the mean shifts to about -0.01 instead of being centered. In row 21 of the P2 data, it seems the negative mean is around -0.015, although there are several peaks at 0.08, which could be significant. Typically, the P2 mode is around +0.05, but it has a long negative tail. If I flipped the row, the mode might turn to -0.05 with positive tails.**Analyzing data for patterns**
+
+I'm looking at the data for E1 and E2 to understand if there’s any redundancy or proportionality in rows and columns. Row 0 in E2 stands out with smaller spreads and mostly positive values compared to others. The values in Row 0 are quite varied but seem to lean positively. It appears that the distribution in this row might be centered around 0.08 rather than 0.05, showing a positive tail and a negative value -0.38.**Analyzing data skewness**
+
+I’m looking at the rows and it’s not always clear. For the E2 columns, there seems to be a noticeable natural skew, especially with some data in column 29. It looks like row flips occur, and even one original symmetric row may not be detectable. The sign flip in the P2 column could be obvious when comparing positive and negative modes. I think I need to visually analyze the first several rows systematically for clarity.**Considering positive indicators**
+
+I’m evaluating sign flips of shifts, which might suggest a positive outcome; however, the random nature and low positives of c_e1 make it tricky. The whole distribution for c_e2 looks slightly positive with a mean of .01, but I'm beginning to think that may not hold up. Looking at the whole c_e1 sign flip seems impossible based on the evidence I have. It definitely feels ambiguous, and I need to dig deeper!**Estimating contributions**
+
+I could manually select common P1 active units for analysis. By using the P1 row average contributions, I can estimate the column means with an equivalent constant, z. Most P1 units appear to cluster around 0.05, plus a baseline. It seems like a practical approach to gather insights, but I’ll need to thoroughly check my calculations to ensure accuracy. Let's explore this further and ensure everything aligns correctly!**Evaluating model setup**
+
+I’m considering if the width can be small and if I should switch to using a truncated normal initialization. The P2 sparse giant weights might need a baseline positive that resembles a pretrained Adam optimizer, but the initialization seems off. If the initial E1 uses orthogonal gain, it should create a standard deviation around .125 or .267 after transposing. Row 9’s standard deviation is at .07 after decay, which seems plausible.**Evaluating evidence limitations**
+
+I'm noticing that the evidence numbers seem positive and obvious, with no zeroes, and learnable outliers. However, the confidence level in identifying any specific corruption is at 0%. It’s clear that this doesn’t meet performance expectations, and I’m expressing its limitations. The user requested a single response without feedback, so I want to ensure I do my best without introducing any unknown corruption.

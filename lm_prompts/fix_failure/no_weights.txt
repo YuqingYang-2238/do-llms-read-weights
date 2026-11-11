@@ -1,0 +1,156 @@
+Below is a policy network that controls a simulated prey animal in a predator-prey evasion game, and the game. The network was trained with model-based reinforcement learning (TD-MPC2) for 100,000 environment steps, and it still gets captured in about one episode out of three.
+
+YOUR TASK: change the network's weights by hand so that the prey survives as often as possible. The known failure is shown under THE CURRENT NETWORK'S RESULT: the predator is in plain view, almost standing still, on the way to the goal, and the prey runs straight past it inside the capture radius instead of keeping its distance. First read the weights and explain why the trained network fails (write this before your edits block). Then keep the parts of the trained network that already work and fix only the part that causes the failure. What matters most is that the prey survives: do not give up survival to change fewer weights. You have no tools: no code execution, no calculator, no simulator, nothing to run. You write numbers. This is a single response; you will get no feedback. Your edits are applied to the network shown below, and the result is measured on 100 new episodes with actions chosen as described under HOW ACTIONS ARE CHOSEN.
+
+THE GAME AND THE RULES
+A predator-prey evasion game in a flat two-dimensional arena (x to the right, y up; headings in radians, 0 = facing +x, counter-clockwise positive). One fixed arena; episodes differ through the predator's random start cell and random wandering, and through the random sampling inside the action selection.
+
+Arena: a regular hexagon with corners (1, 0.5), (0.75, 0.933), (0.25, 0.933), (0, 0.5), (0.25, 0.067), (0.75, 0.067). It is tiled into 331 hexagonal cells (corners pointing up and down); cell centres are 0.0469 apart within a row and rows are 0.0406 apart in y, with every other row shifted by half a cell. "The prey's cell" means the cell whose centre is closest to the prey.
+Occlusions: 37 of the cells are solid obstacles; they block movement and block line of sight. Everything else is open floor. Centres of the occluded cells, by row (y: x values):
+  y 0.744: 0.266, 0.312, 0.359
+  y 0.703: 0.242, 0.289, 0.336
+  y 0.662: 0.266, 0.312
+  y 0.541: 0.336
+  y 0.500: 0.219, 0.359
+  y 0.459: 0.242, 0.289, 0.336, 0.383, 0.430, 0.617
+  y 0.419: 0.453, 0.547, 0.594, 0.641
+  y 0.378: 0.477, 0.523, 0.570, 0.617, 0.664
+  y 0.338: 0.688
+  y 0.256: 0.359
+  y 0.216: 0.336, 0.383, 0.430, 0.477, 0.523, 0.570
+  y 0.175: 0.312, 0.359, 0.406
+Prey (the controlled agent): starts every episode at (0.05, 0.5) facing +x. It is given a destination point and navigates toward it along the shortest path around the occlusions. Its nominal top speed is 0.5 units per second; in the recorded episode below it covers between 0.04 and 0.21 units per step.
+Goal: the point (1.0, 0.5). The episode ends as soon as the prey is within 0.1 of it.
+Predator (not controlled): starts each episode at a random one of 75 open cells with x >= 0.38. Its top speed is 0.15 times the prey's (0.075 units per second), and it turns slowly. While it has line of sight to the prey it heads for the prey's current position. Otherwise it walks to a randomly chosen open cell, then picks another.
+Line of sight: prey and predator see each other when the straight segment between them crosses no occluded cell and is at most 1.0 long.
+Capture: at any moment in which the predator is in the prey's line of sight and the distance between them is 0.1 or less, the prey is captured. A capture does not end the episode: the prey keeps moving, and no further capture can happen for the next 0.5 seconds (the cool-down).
+Peeking: see a[2] under THE ACTIONS. Each cell and heading has a precomputed score "aiv" (how much of the arena comes into or goes out of view from there), typically 0 to 0.1.
+Episode: one step is 0.25 seconds of simulated time (10 simulation sub-steps of 0.025 s; captures and the goal are checked every sub-step). At most 300 steps. The episode ends when the prey reaches the goal, or after 300 steps (timeout).
+Reward of a step (what the network was trained to maximise; it is not the score):
+  -2       if the prey was captured during this step
+  +2       if the prey is within 0.1 of the goal
+  -0.01 * tanh(max(0, 0.5 - d))   while the predator is visible at distance d
+  +0.01 * tanh(aiv / 0.18)        if peeking and aiv > 0.027
+  -0.02                           if peeking and aiv <= 0.027
+  -0.001                          every step
+Score: the share of episodes in which the prey reaches the goal with zero captures ("survived"). Reaching the goal after one or more captures counts as a failure, and so does a timeout.
+
+THE OBSERVATION
+14 numbers (float32), in this order:
+  input 0   prey_x, 0 to 1
+  input 1   prey_y, 0 to 1
+  input 2   prey heading in radians, 0 to 2*pi (0 = facing +x). This input is on a 0 to 6.28 scale while most others are 0 to 1.
+  input 3   predator_x, 0 to 1, but exactly 0 whenever the predator is not in line of sight
+  input 4   predator_y, same rule
+  input 5   predator heading in radians, 0 to 2*pi, exactly 0 when not in line of sight
+  input 6   distance from the prey to the goal (0.95 at the start; the episode ends at 0.1 or less)
+  input 7   1 if the prey was captured during the previous step, otherwise 0
+  input 8   seconds left of the 0.5-second cool-down after a capture, otherwise 0
+  input 9   1 if the episode has finished, otherwise 0 (always 0 while the network is acting)
+  input 10  1 if the prey held still (peeked) on the previous step, otherwise 0
+  input 11  aiv of the prey's cell and heading
+  input 12  1 if the prey's cell is next to the outer wall, otherwise 0 (1 at the start position)
+  input 13  1 if the prey's cell is next to an occluded cell, otherwise 0
+
+THE ACTIONS
+An action is 3 numbers a[0], a[1], a[2]. The action that reaches the game is always clipped to [0, 1].
+  a[0], a[1]  a destination point (x, y). The prey navigates toward it along the shortest path around the occlusions. A new action is chosen every step, so a far-away destination simply means "head that way".
+  a[2]        if a[2] > 0.5 AND the prey's cell is next to the outer wall or next to an occluded cell (input 12 or input 13 is 1), the prey ignores the destination and holds still for this step (it "peeks"). Otherwise a[2] has no effect.
+
+THE NETWORK
+Input x: the 14 observation numbers. The network is a state encoder followed by a policy head. It uses LayerNorm and the Mish activation:
+  LN(v) = (v - mean(v)) / sqrt(var(v) + 1e-5) * g + c       (mean and var over the features of v; g and c are the LayerNorm scale and shift)
+  mish(v) = v * tanh(log(1 + exp(v)))                          (element-wise; roughly 0 for v below -2, roughly v for v above 1, minimum about -0.31 near v = -1.2)
+  simnorm(v) splits the 32 features into 4 groups of 8 consecutive features and applies a softmax inside each group
+Forward pass:
+  h1 = mish(LN(x @ E1 + e1))                E1: 14 x 64,  e1: 64,  LayerNorm scale g_e1 and shift c_e1: 64
+  z  = simnorm(LN(h1 @ E2 + e2))            E2: 64 x 32,  e2: 32,  LayerNorm scale g_e2 and shift c_e2: 32      (z is the 32-dimensional latent state)
+  p1 = mish(LN(z @ P1 + b1))                P1: 32 x 96,  b1: 96,  LayerNorm scale g_p1 and shift c_p1: 96
+  p2 = mish(LN(p1 @ P2 + b2))               P2: 96 x 96,  b2: 96,  LayerNorm scale g_p2 and shift c_p2: 96
+  out = p2 @ P3 + b3                        P3: 96 x 6,   b3: 6
+  m = out[0:3] (action means before tanh), s = out[3:6]; log_std = -10 + 6 * (tanh(s) + 1); std = exp(log_std)
+  The network's own action: mean action tanh(m); sampled action tanh(m + std * eps) with eps drawn from a standard normal, independently per entry.
+W tensors are (inputs, outputs): row i belongs to input/unit i of the previous layer, column j to unit j of the next layer. Tensors: E1 (14 x 64), e1, g_e1, c_e1 (64), E2 (64 x 32), e2, g_e2, c_e2 (32), P1 (32 x 96), b1, g_p1, c_p1 (96), P2 (96 x 96), b2, g_p2, c_p2 (96), P3 (96 x 6), b3 (6): 16,678 parameters. These are the only tensors you can edit.
+
+HOW ACTIONS ARE CHOSEN
+The network does not act alone. Every step, a short-horizon planner picks the action, using the network together with three more learned models that were trained with it and that are NOT shown and cannot be edited: a dynamics model (latent z and action -> next latent), a reward model (latent and action -> predicted reward) and 5 Q-value models (latent and action -> predicted return). All of them take the latent z produced by the encoder shown below. The planner, exactly:
+  1. z = the encoder's latent for the current observation.
+  2. Proposals from the network: 24 action sequences of length 3. Each starts at z, takes the network's sampled action tanh(m + std * eps), moves to the next latent with the dynamics model, and repeats.
+  3. A running Gaussian over action sequences of length 3: its mean starts at 0 on the first step of an episode and otherwise at the previous step's result shifted by one step; its std starts at 2.
+  4. Repeat 6 times: draw 488 sequences from the Gaussian, clipped to [0, 1], and put them together with the same 24 proposals (512 candidates). Score each candidate: the reward model's predicted rewards of its 3 actions (discount 0.983 per step) plus 0.983^3 times the Q-value of the latent reached after the 3 actions, evaluated at the action the network samples there (the smaller of two of the 5 Q models, picked at random). Keep the 64 best, weight them by exp(0.5 * (score - best score)), and set the Gaussian's mean and std to the weighted mean and std of these 64 (std kept between 0.05 and 2).
+  5. Pick one of the last 64 best candidates at random with probability proportional to its weight. The action is its first action plus Gaussian noise of 0.1 times the Gaussian's std, clipped to [0, 1].
+So the tensors you can edit reach the action in three ways: the policy head (P1..b3) supplies 24 of the 512 candidates in every round, and they are executed whenever the hidden models score them among the best; the policy head's action after 3 steps is the action at which every candidate's final Q-value is read; and the encoder (E1..c_e2) produces the latent that the hidden models see. The hidden models were trained on the latents of the encoder as shown: if you change the encoder, they receive latents they were not trained on.
+
+THE CURRENT NETWORK'S RESULT
+Result over 100 episodes (actions chosen by the planner as described): survived 67 (67.0 %), not survived 33.
+A separately recorded batch of 5 episodes (same setup): 5 reached the goal, in 4 to 7 steps; 1 survived; 4 were captured once on the way and still ran on to the goal. In every one of these captures the predator had been in the prey's line of sight for several sub-steps before the capture and had hardly moved:
+episode | predator first in view: time s, prey x, y, predator x, y, distance | capture: time s, prey x, y, predator x, y | predator moved in between
+      0 | 0.275, 0.266, 0.593, 0.734, 0.500, 0.477 | 0.850, 0.722, 0.598, 0.730, 0.499 | 0.004
+      2 | 0.675, 0.376, 0.573, 0.848, 0.462, 0.485 | 1.175, 0.780, 0.558, 0.816, 0.466 | 0.033
+      3 | 0.700, 0.349, 0.574, 0.651, 0.550, 0.303 | 0.950, 0.571, 0.608, 0.648, 0.552 | 0.003
+      4 | 0.700, 0.372, 0.569, 0.744, 0.550, 0.373 | 1.050, 0.650, 0.536, 0.737, 0.553 | 0.008
+For comparison, the network acting alone (action = tanh(m) clipped to [0, 1], no planner), 100 episodes: survived 0, timeout 100, mean episode length 300 steps, mean captures per episode 140.6.
+
+The known failure, episode 3 of the recorded batch (captured once, then reached the goal after 7 steps: not survived).
+Decision steps. For each step: the observation the network received, the action the planner executed, and what the network shown below outputs by itself on that observation (m = out[0:3], its mean action tanh(m), and its std).
+step | time s | observation, inputs 0..13 | executed action a[0], a[1], a[2] | network alone: m[0], m[1], m[2] | network alone: tanh(m) | network alone: std
+   0 | 0.00 | 0.050 0.500 0.000 0.000 0.000 0.000 0.950 0.000 0.000 0.000 0.000 0.035 1.000 0.000 | 0.769, 0.865, 0.181 | 10.75, -18.02, 10.75 | 1.000, -1.000, 1.000 | 1.433, 3.178, 2.128
+   1 | 0.25 | 0.093 0.512 0.395 0.000 0.000 0.000 0.907 0.000 0.000 0.000 0.000 0.050 0.000 0.000 | 0.942, 0.629, 0.136 | 10.97, -15.68, 9.49 | 1.000, -1.000, 1.000 | 1.200, 3.210, 1.545
+   2 | 0.50 | 0.204 0.553 0.160 0.000 0.000 0.000 0.798 0.000 0.000 0.000 0.000 0.065 0.000 1.000 | 0.959, 0.705, 0.048 | 7.36, 0.41, -0.40 | 1.000, 0.385, -0.377 | 1.609, 0.006, 0.013
+   3 | 0.75 | 0.413 0.585 0.164 0.650 0.551 2.509 0.594 0.000 0.000 0.000 0.000 0.015 0.000 0.000 | 0.997, 0.527, 0.998 | 7.81, 0.59, 4.69 | 1.000, 0.527, 1.000 | 1.603, 0.006, 0.704
+   4 | 1.00 | 0.607 0.600 6.043 0.647 0.552 2.727 0.405 1.000 0.450 0.000 0.000 0.008 0.000 0.000 | 1.000, 0.496, 0.965 | 8.74, 0.52, 1.84 | 1.000, 0.481, 0.951 | 2.031, 0.003, 0.055
+   5 | 1.25 | 0.779 0.553 6.011 0.642 0.555 2.531 0.228 0.000 0.200 0.000 0.000 0.010 0.000 0.000 | 0.990, 0.520, 1.000 | 9.01, 0.57, 3.91 | 1.000, 0.512, 0.999 | 1.932, 0.003, 0.253
+   6 | 1.50 | 0.899 0.519 6.011 0.634 0.562 2.215 0.103 0.000 0.000 0.000 0.000 0.006 0.000 0.000 | 0.998, 0.503, 0.984 | 7.70, 0.58, 2.72 | 1.000, 0.525, 0.991 | 1.409, 0.002, 0.105
+In words: the predator stands at about (0.65, 0.55), hidden from the prey until t = 0.700 s. At decision step 3 (t = 0.75 s) the prey is at (0.413, 0.585) and sees the predator at (0.650, 0.551), 0.24 away and close to the straight line from the prey to the goal. The executed action is the destination (0.997, 0.527), which is the goal; the network's own mean action on that observation is (1.000, 0.527, 1.000), practically the same. The prey runs toward the goal, is captured at t = 0.950 s at (0.571, 0.608) with the predator at (0.648, 0.552), passes the predator at a closest distance of 0.037, and reaches the goal. Between its first sighting and the capture the predator moved 0.003 units. a[2] is above 0.5 from step 3 on but has no effect there, because the prey's cell is not next to the wall or an occluded cell (inputs 12 and 13 are 0).
+The same episode every 0.05 s. The predator's position is listed also while it is hidden from the prey (the prey's inputs 3..5 are 0 then).
+time s | prey x, y | predator x, y | predator in view | distance | event
+0.000 | 0.050, 0.500 | 0.664, 0.541 | no  | 0.615 | decision step 0
+0.050 | 0.062, 0.500 | 0.664, 0.541 | no  | 0.604 | 
+0.100 | 0.062, 0.500 | 0.664, 0.541 | no  | 0.604 | 
+0.150 | 0.062, 0.500 | 0.664, 0.541 | no  | 0.604 | 
+0.200 | 0.069, 0.502 | 0.664, 0.541 | no  | 0.597 | 
+0.250 | 0.093, 0.512 | 0.664, 0.541 | no  | 0.571 | decision step 1
+0.300 | 0.122, 0.524 | 0.663, 0.541 | no  | 0.542 | 
+0.350 | 0.147, 0.536 | 0.663, 0.541 | no  | 0.515 | 
+0.400 | 0.171, 0.546 | 0.662, 0.541 | no  | 0.491 | 
+0.450 | 0.181, 0.549 | 0.661, 0.542 | no  | 0.480 | 
+0.500 | 0.204, 0.553 | 0.660, 0.543 | no  | 0.456 | decision step 2
+0.550 | 0.229, 0.556 | 0.658, 0.544 | no  | 0.430 | 
+0.600 | 0.253, 0.560 | 0.656, 0.546 | no  | 0.403 | 
+0.650 | 0.278, 0.563 | 0.654, 0.548 | no  | 0.376 | 
+0.700 | 0.349, 0.574 | 0.651, 0.550 | yes | 0.303 | 
+0.750 | 0.413, 0.585 | 0.650, 0.551 | yes | 0.240 | decision step 3
+0.800 | 0.469, 0.594 | 0.650, 0.551 | yes | 0.187 | 
+0.850 | 0.518, 0.602 | 0.650, 0.551 | yes | 0.141 | 
+0.900 | 0.561, 0.610 | 0.649, 0.551 | yes | 0.105 | 
+0.950 | 0.571, 0.608 | 0.648, 0.552 | yes | 0.095 | CAPTURE
+1.000 | 0.607, 0.600 | 0.647, 0.552 | yes | 0.062 | decision step 4
+1.050 | 0.650, 0.589 | 0.647, 0.552 | yes | 0.037 | 
+1.100 | 0.689, 0.578 | 0.646, 0.553 | yes | 0.050 | 
+1.150 | 0.723, 0.569 | 0.645, 0.553 | yes | 0.079 | 
+1.200 | 0.752, 0.560 | 0.644, 0.554 | yes | 0.109 | 
+1.250 | 0.779, 0.553 | 0.642, 0.555 | yes | 0.136 | decision step 5
+1.300 | 0.803, 0.546 | 0.641, 0.556 | yes | 0.162 | 
+1.350 | 0.827, 0.540 | 0.639, 0.558 | yes | 0.189 | 
+1.400 | 0.851, 0.533 | 0.637, 0.559 | yes | 0.215 | 
+1.450 | 0.875, 0.526 | 0.635, 0.561 | yes | 0.243 | 
+1.500 | 0.899, 0.519 | 0.634, 0.562 | yes | 0.269 | decision step 6
+1.525 | 0.911, 0.516 | 0.634, 0.562 | yes | 0.281 | goal reached, episode ends
+
+EDIT FORMAT (numbers only; nothing is run). Write a code block whose opening line is three backticks followed by the word edits, one statement per line ('#' starts a comment; a long list may continue over the next lines):
+
+```edits
+b3[0:3] = [0.5, 2.0, -1.0]     # explicit values along one range (as many values as the range has entries)
+P3[7, 0:3] = 0                 # fill: row 7, columns 0..2 (a:b is half-open; ':' alone = the whole axis)
+E1[3, 5] = 1.25                # one entry: row 3 (input 3, predator_x), column 5
+P2[:, 3] *= 0.5                # scale a block (also += and -=)
+c_p2[5] -= 0.1
+ZERO b2                        # set a whole tensor to 0
+```
+Tensor names are exactly those listed under THE NETWORK. Indices start at 0 and follow the tensors as written below: for a matrix, [row, column] with row = input/unit of the previous layer and column = unit of the next layer; for a vector, [index]. Statements apply in order to the network shown below; a later statement overwrites an earlier one. Only the LAST edits block of a reply is read. A statement that cannot be read is skipped (the others still apply). Values: plain decimal numbers (absolute value at most 1e6).
+
+After the edits block, explain briefly (at most about 200 words) what your edits do.
+
+THE WEIGHTS (complete encoder and policy head). Forward pass: h1 = mish(LN(x @ E1 + e1)); z = simnorm(LN(h1 @ E2 + e2)); p1 = mish(LN(z @ P1 + b1)); p2 = mish(LN(p1 @ P2 + b2)); out = p2 @ P3 + b3. Values rounded to 3 decimals.
+
+The weights of this network are not shown.

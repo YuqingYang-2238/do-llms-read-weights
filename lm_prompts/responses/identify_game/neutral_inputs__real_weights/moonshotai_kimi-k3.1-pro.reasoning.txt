@@ -1,0 +1,718 @@
+Kimi needs to solve this puzzle from weights, infer game. Should provide observations each input encoder magnitude structure suggestions, output layer biases actions. Should identify specific likely game/experimental paradigm. Should deeply reason. Observation 14 inputs ranges, actions 3 continuous [-1,1], step .25s max 300 = 75 sec. TD-MPC2. Inputs:
+0 0-1
+1 0-1
+2 0-2pi
+3 0-1
+4 0-1
+5 0-2pi
+6 0-about1
+7 binary
+8 0-.5
+9 binary
+10 binary
+11 nonnegative typically 0-.1
+12 binary
+13 binary
+
+Looks game environment with two agents? First six = two entities each x,y,angle? x,y normalized positions 0,1 and orientation. 0,1,2 agent state; 3,4,5 target/opponent state. input6 distance? input7 something. input8 perhaps time? input9,10,12,13 binary statuses. input11 small = time since? Could be Pursuit/Evasion? Predator-prey, tag? Three action values likely movement (vx vy?) and rotation? Could be tank game? Inputs two objects positions and angles, plus distance, collision flags, etc. Should infer weights importance:
+Rows E1:
+input0 modest ~0.03-0.16; row1 larger ~0.1-0.21; row2 near zero ~mostly .00 except -.101 at col37, .06 etc, so angle 2 ignored. input3 moderate ~0.1; input4 moderate ~0.1-0.176; row5 angle near zero (one -.08, -.058); row6 strong ~0.1-.234; row7 moderate ~.05-.175; row8 very strong especially -1.286 at col39, -.497 at49, .324 at58, -.291 at19, etc. row9 moderate ~.1-.18; row10 strong ~.2-.444, -.428, -.313 etc. row11 moderate ~.05-.08; row12 small ~.03-.09. Should map row indices carefully:
+E1 14 lines:
+0 positions input0
+1 input1
+2 input2 near zero
+3 input3
+4 input4
+5 input5 near zero
+6 input6 strong
+7 input7 moderate
+8 input8 huge sparse
+9 input9 moderate
+10 input10 strong
+11 input11 moderate
+12 input12 small
+13? Wait count lines provided: I'll enumerate actual:
+Line1 starts 0.000 ... input0.
+Line2 -0.131 ... input1.
+Line3 -0.011 ... input2.
+Line4 -0.144 ... input3.
+Line5 -0.028 ... input4.
+Line6 0.054 ... input5.
+Line7 0.064 ... input6.
+Line8 0.026 ... input7.
+Line9 -0.038 ... input8 (huge).
+Line10 -0.039 ... input9.
+Line11 -0.014 ... input10.
+Line12 0.096 ... input11 (strong).
+Line13 0.032 ... input12.
+Line14 0.009 ... input13 small.
+So input11 (time-ish small) strong weights despite small raw values, perhaps normalized? If values 0-.1 and weights .4, contribution .04, still moderate. input8 0-.5 huge -1.286 gives meaningful. input6 about1 strong. Binaries 7,9,10,12,13 vary importance: 10 near zero, 12 moderate, 13 small. So key inputs: 1,3,4,6,8,9,11; input0 moderate; input7 modest; input10 almost ignored; input12 low; input13 very low. Angles ignored.
+
+Could be environment "Catch" / "Collect" with player and target each positions and heading. Game could be "Pong"? Input layout for two turtles? 3 action values maybe "left/right, forward/back, ..." Could be a drone/rocket? Angles ignored strange if orientation meaningful. Could be two players with xy and angle observation but game only needs distances/directions. Could be "Sparrow"/"Tag" in "MultiAgent..."?
+
+Question likely generated based on some arena with several games, e.g. "ai2thor"? Should identify well-known game from observation signature. Could be "Cartpole", "Lunar Lander", "BipedalWalker" no, 14 obs 3 actions with xy orientation two objects. Could be "Space Invaders"? no. 0.25 sec steps and 300 episodes suggests custom psychophysics "foraging" game. Inputs paired: agent x y heading, target x y heading, speed, flags. Could be "air hockey", "tag", "sumo", "soccer". 3 action values = forward/back, left/right, rotate? Could be simple "tank" with throttle, steering, turret? If positions of "self" and "opponent" plus angle, binary bullets etc. Three actions could be accelerate, turn, shoot. In game "Tank" / "Tank trouble", observation of self and enemy x,y,angle, own speed, cooldown etc. Input8 0-.5 likely "time to impact"? input11 small maybe angular error? I'll parse plausible semantics.
+
+Two triplets (distance? normalized? bearing?) with first two 0-1 and third 0-2pi strongly suggests x,y,theta of two agents. input6 0-about1 = speed/distance. input7 0/1 = something alive? input8 0-.5 = cooldown? input9 0/1, input10 0/1 = contacts/buttons? input11 nonnegative typically 0-.1 = something time. input12 and 13 0/1 = terminal events/reward signals? If agent actions 3 = two steering axes and one action. Games with two players moving on a 2D plane: "Tag", "Keep away", "Sumo", "Battle", "Soccer", "Collect".
+
+Perhaps game is "Pursuit" from "Neural MMO"? Experimental paradigm "Predator-prey pursuit" / "chasing task", "shepherding". 75 sec episodes. Target with orientation, speeds. Reward based on "prey capture". Binary flags for visibility/collision, timers. Could be "Dodgeball" etc.
+
+Can output weights reveal action semantics: P3 mean col0 has many large positive/negative weights; col1 fewer but key large +/-; col2 only a handful. Col0 baseline 0.091 ~ small; col1 baseline .007; col2 .061. Strong features:
+p2 unit5: [0.141,0.007,0.894]
+unit8 [0.978,0.049,0.046]
+unit21 [-1.222,0.312,-0.891]
+unit18 [-.054,.555,.009]
+unit32 [-.597,.008,-.098]
+unit38 [-.542,-.043,.120]
+unit39 [-.551,.150,-.100]
+unit45 [-.511,.024,-.238]
+unit48 [.482,.035,-.051]
+unit50 [.115,.565,-.006]
+unit51 [.329,.047,.231]
+unit52 [.500,.032,-.017]
+unit56 [-.259,-.545,.024]
+unit58 [-.011,.386,.027]
+unit61 [-.169,-.451,.029]
+unit66 [.996,.089,-.064]
+unit71 [.537,-.063,.004]
+unit79 [-.896,-.104,.280]
+unit80 [.425,.038,-.008]
+unit85 [.009,-1.116,.725]
+unit88 [.372,.045,.081]
+etc. So all actions variable. Logstd weights small ~.1, b3 ~0.1. log_std = -10+6*(tanh(.1)+1) ~ -3.4 -> std .033, almost deterministic at eval irrelevant. Action means out baseline ~.1. Not at extremes. Output dominated by col0 and col1, col2 only 5,21,85,79, etc. Could be 2D movement plus third discrete-ish action unused? But action2 trained has strong weights; could be rotation.
+
+Can infer functional game from policy action distribution? Should compute approximations perhaps impossible but can reason P3: col0 many weights positive ~0.05 and huge plus/minus, col1 similar, col2 mostly near zero except sparse. Could suggest action2 "jump" rarely used / brake/fire. If game with car controls throttle, steer, drift? Action0 and1 are move x,y, action2 "interact". Angles ignored because top-down agent with velocity action direct x,y, no heading needed. Yet observations include heading perhaps for target but irrelevant.
+
+Input pairs x,y,angle for agent and ball? Ball angle meaningless (could be velocity angle). Could be "slime volleyball"? obs x,y,angle? no.
+
+Perhaps game "Fishing" / "Catching" in "Animal-AI Olympics"? 14 inputs as raycasts? Hmm.
+
+Could be from "Gymnasium" environments with custom wrappers. TD-MPC2 benchmarks usually DMControl, Meta-World, ManiSkill, MyoSuite, HumanoidBench. Observations 14 and actions 3 fits "Reacher" with 10 obs and 2 actions; "Pusher" 23 obs 7; "Point Maze" etc. "Fishing derby"? No standard MuJoCo game with 2 angles 0-2pi and many binary flags. "CarRacing" obs pixels no. "Boids" custom.
+
+Phrase "game played in this arena", "experimental paradigm" hints known task in "Crafter"? Crafter obs features? Crafter has 64x64 pixels and 17 discrete actions. "MinAtar" 10x10 channels. "XLand"? "JAXMARL"? "MPE"? "Melting Pot"?
+
+Could be "MicroRTS"? no.
+
+Could be psychology experiment with "Foraging" and "approach-avoidance": "Pac-Man" top-down player and ghost positions/directions, distance, power pellet, timers, actions 3 continuous? Pac-Man typically 4 discrete actions, no.
+
+"Tag" game akin "Chase" in "Mujoco multiagent" or "simple_tag" MPE. Observation simple_tag for one adversary: [self vel (2), self pos (2), landmark pos (2), other agent pos (2), other agent vel (2)] etc 10 or 14; actions 2 or5. Here positions and angles 0-2pi more like "MAgent2" battle? Many binary flags. "Sisl pursuit" actions discrete.
+
+"Multiwalker" etc no.
+
+"SMAC" no.
+
+Could be game "Tron" with positions and angles, speed, alive status, collision times, boost, walls. 3 actions maybe throttle, turn, boost. Input8 range 0-.5 = cooldown boost. Input11 small = wall distance? Hmm.
+
+Another thought: "Drone racing"/"Lunar lander" with two crafts: x,y,angle self/target, speed, contact flags. "Asteroids" with ship and asteroid? Actions rotate left/right, thrust, fire. 14 inputs likely ship x,y,angle, target x,y,angle, distance, has_fired, relative velocity, ... Binary "docked". Game "Space duel" / "Tank combat".
+
+Experimental paradigm well-known: "Tiger problem", "Predator-prey", "Prisoner's dilemma", "Public goods", "Stag hunt", "Chicken", "Battle of the Sexes". Two agents x,y,orientation, flags, continuous 3 action = "Collective robust..."? "Stag hunt" gridworld two players? One agent controls avatar with 2 movement + interaction. Inputs could be self and partner position/heading, distance, carrying state, reward. "Coin game" (sequential social dilemma) has two players positions, coin position, coin color; 2D grid and discrete 4 moves, no angles. "Harvest", "Cleanup", "Territory" no.
+
+"Well-known experimental paradigm" could be "T-maze", "Morris water maze", "reaching task", "delayed match-to-sample", "Wisconsin card sorting", "foraging task". 14 obs with agent and target x,y,theta and binary cues, continuous actions suggests "Morris water maze" navigation to platform, but why two triplets? Start and goal positions, orientation? Target moving? "Boids" etc.
+
+Could be "Keepaway" (RoboCup) / "half field offense". Actions 3 = move, turn, kick. Two objects positions and angles perhaps player and ball. Flags possession, collision, goal, time since kick. Input6 speed. Inputs 7/9/10 etc flags. Reward scoring in "Soccer". Specifically game "Pong" has paddle and ball positions, angle, distance, score etc. Actions 3 maybe paddle x/y? I'll examine ranges:
+0,1: ball x,y normalized
+2: ball direction angle
+3,4: paddle x,y normalized
+5: paddle orientation angle
+6: ball speed
+7: ball is held?
+8: distance to something [0,.5]
+9: bounce?
+10: goal?
+11: small timestep? 
+12,13: scores?
+Game "Air hockey" observations: puck x,y,angle, striker x,y,angle, speed, contact, etc. Action 3 values could be desired x/y and hit? Angles perhaps orientation irrelevant due circular puck/paddle, weights near zero. Yes input2 and5 angles near zero fits ball/puck and mallet heading irrelevant. Key input8 perhaps "time since hit" range 0-.5. 3 action values could be velocity x, y and rotation? Air hockey agent controls paddle in 2D, 3rd action? Usually 2. Game "Pong" one DOF, not3.
+
+"Billiards" / "Pool": player ball and target ball x,y,angle (spin?), 3 actions = aim angle, force, perhaps spin. Observations flags for potted balls etc. But only two object triplets not enough.
+
+"Foosball": 3 actions move/rotate/kick.
+
+"Frisbee"/"Disc golf": x,y,angle for disc and agent, speed, flying flag, etc.
+
+"Handball" / "Squash" perhaps.
+
+Could be "Tennis" with player and ball states. But game top-down and 3 action = x/y movement and swing. Input 8 range .5 perhaps ball height? Input 11 small perhaps time-to-bounce. Binary flags: serve, bounce, hit. Reward rally/win. Two angles ignored: ball heading important though input2 near zero contradictory unless positions enough.
+
+Game "Catch" with ball: agent x,y,orientation and ball x,y,orientation? Ball height 0-.5, caught binary, etc. Input6 distance, 8 height? 11 vertical velocity small? Three action values = movement and catch. "Flying" object.
+
+Perhaps well-known game "Freeze Tag" or "Capture the Flag" with two players, flags captured/at base, scores. Positions and headings; input6 speed; input7 on/off ground; input8 stamina (0-.5); input9/10 pickups; input11 elapsed since tag; input12/13 scores. Output movement + turn.
+
+Question asks "Which game was it trained on?" likely expected named game among finite set in "arena". There may be clues in parameter setup from TD-MPC2 implementation. 16,678 params exactly? I'll verify dimensions:
+E1 896 +64 +128 LN =1088? 14*64=896, e1 64, g,c 128 =>1088.
+E2 2048+32+64=2144; total3232.
+P1 3072+96+192=3360; total6592.
+P2 9216+96+192=9504 total16096.
+P3 576+6=582 =>16678. yes. This is custom net from TD-MPC2 official. Input dim14 action dim3. Could correspond to "Lunar Lander Continuous" obs8 act2 no. "Mountain Car Continuous" 2/1. "Pendulum"3/1. Custom "BSuite"? "DM Control point mass" etc no binary obs.
+TD-MPC2 also evaluated on "Meta-World" 39 obs 4 actions, "Humanoid" etc. Perhaps game from "Di-MOCRL"? Could be "Micro-Forbidden city". This puzzle likely includes a set of custom "games in this arena" based on "Pycolab"? Should infer environment.
+
+Observation 14:
+Could correspond to "Self-play fighting game": agent's x,y normalized and heading, target's x,y heading, health (0-1), is_alive, attack cooldown 0-.5, two attack booleans, damage/time since damage, scores binary. Three actions: move, rotate, attack. Game "Sumo" has health? input6 speed perhaps "stamina". Key input8 heavily weighted could be "agent's stamina" or "ball possession timer".
+
+I'll estimate feature relevance with weight norms:
+row0 RMS .058
+row1 .096
+row2 .014 (mostly ignored)
+row3 .067
+row4 .069
+row5 .017
+row6 .091
+row7 .052
+row8 .157 (with huge)
+row9 .064
+row10 .044
+row11 .161
+row12 .034
+row13 .031.
+So input11 strongest overall, input8 second, input1,6. Input11 tiny typical means perhaps distance rate or velocity. If values 0-.1, effective contributions low unless weights trained for low scale. Row11 has max -.444 etc, average .13, times .05 = .0065 vs row1 avg .08*0.5=.04. So even strong row11 may be moderate small effect. LayerNorm across 64 features can amplify patterns but still.
+
+Rows2/5 essentially zero exactly implies angle observations irrelevant, likely deliberately trained task where headings not needed. This rules out tasks where rotating to face target essential. Could be angles are not angles but "phase" e.g. orientation of prey, irrelevant for omnidirectional agent. Movement direct x/y, action2 interact.
+
+First six could be "two agents' polar observations" but x,y 0-1, theta. Input6 perhaps distance between them, input7 can see? input8 time in contact, input9/10 buttons, input11 speed, 12/13 statuses.
+
+Could be game "Tag": both positions and headings irrelevant because tag by proximity, direct acceleration. Distance input6 strongly used, yes. input8 [0,.5] perhaps cooldown for tag (0.5 sec), key because tagger can only tag after cooldown. input9/10 flags who is "it"; input11 velocity. input12/13 flags caught? Policy needs know role. But if one network trained single agent vs scripted opponent, binary input9/10 could be "is tagger" etc. Game "Tag" reward chasing/evading. 75 sec episodes, typical tag 75 sec. Three actions = x/y movement and tag button. Could be "Freeze tag" with freeze/unfreeze. Well-known experimental paradigm "predator-prey pursuit (chase and evade)" likely.
+
+"Hide and seek" needs obstacles and more inputs. "Capture the Flag" needs flag positions. "King of the Hill" needs hill info.
+
+Could be "Cops and Robbers" / " pursuit-evasion" with thief, gem etc. Game "Keep Away" one chaser one runner. Distance key.
+
+Could be "Duel" with combat. Distance important and cooldown. Angles ignored means attack omnidirectional. Three action x/y plus attack. "Sword fighting" would orientation important, so no.
+
+"Food collection" target static, positions and distance, flags. Game "Foraging" where agent seeks food, avoids predator. First 6 could be "home" and "food" but no agent position? Should agent x,y and target x,y. Reward reaching target. Angles ignored. Binary inputs could object colors etc.
+
+"Fishing" paradigm: "approach a moving target while avoiding aversive region", "Dodge".
+
+Could infer from action P3 biases perhaps third action mostly positive? Should approximate means impossible. But col2 sparse suggests action often baseline or triggered by specific units, consistent "tag/attack button" used only in contexts. Col0/1 continuous movement. So environment is top-down locomotion + context-sensitive interact.
+
+Candidate games:
+- "Tag" (third action tag)
+- "Catch" (third action catch)
+- "Soccer" (third action kick)
+- "Tennis"/"Pong" (third action hit)
+- "Collect" (third action pickup)
+- "Push" (third action? no need)
+- "Sumo" (third action push?)
+- "Boxing" (punch)
+- "Shooting" (fire)
+- "Asteroids" (fire).
+Observation two entities plus no object list = single opponent, likely "Pong-like duel", "Tag", "Boxing".
+
+Input8 range 0-.5 could be "cooldown" for punch/shot/tag, max .5 sec. Policy strongly attends to it, likely attack cooldown. Input11 small nonneg typically .0-.1 could be "contact gap" / "time since event" or "health regeneration". Could be "distance between agents beyond sum radii" small. If input6 distance about1, input8 "range advantage" etc.
+
+Binary 7,9,10,12,13 could be "is_player1", "has_ball", "is_dashing", "won", "lost". One-hot state of finite game state. If game is "Rock-paper-scissors" with movement? Binary flags action choices?
+
+Perhaps "Fighting" game with three continuous actions: left/right, jump, punch. Observations positions/angles of two boxers, health, grounded flag, attack cooldown, hitstun etc. Top-down? x,y normalized 0-1 and angles 0-2pi. Game "Sumo" from "Multi-Agent MuJoCo" no normalized x/y angles.
+
+Well-known physics game "Slither.io", "Agar.io": player and food positions/headings, size, boost, flags. 3 actions = x/y and split/eject. Input6 mass 0-1; input8 distance? Reward eating. One target at a time. Could be "Agar" experimental paradigm "foraging under predation". But no score multi entities.
+
+"Snake" continuous? player head and food, heading relevant for turning, but ignored impossible. Unless direct velocity.
+
+"Frogger" no.
+
+"Capture the flag" positions of self and opponent plus own flag status; distance etc; no flag coords if fixed known at 0/1. Action x/y+tag. Could be game "Flag capture" / "RoboCup".
+
+"Keepaway" in robotics has two players? Typically 3 keepers 2 takers and ball, obs 13 or more, 3 actions (hold/ pass). But angles etc.
+
+Question wording "if it resembles a well-known game or a well-known experimental paradigm, give its name" perhaps they expect "pursuit–evasion / tag" and not commercial. I can respond "a two-dimensional chase/tag (predator–prey) game". Should decide exact agent role. Reward could be "catch prey" vs "evade predator". Can weights indicate whether action is catching? Not really. Should use observation flags and action output. Perhaps game is "Dodgeball" and agent evades. Should infer from E1 relative input importance: inputs0/1 own position vs3/4 opponent. Row1 (own y) stronger than row0, row3/4 target. If world boundaries? Why y stronger than x? Could be one-dimensional "tightrope"?
+
+Positions perhaps 0/1 not xy but polar radius cos? Two positions each with angle = target in polar? x,y,theta for own and opponent. If task is "jousting", both angles should matter. If ball mallet etc no.
+
+Could be "Cursor control" for "Fitts's law" task: agent controls cursor in 2D, target appears, must click; observations cursor x/y and angle? no.
+
+"Whac-a-mole" / "prey capture" common psychomotor paradigm: target x,y,direction, pursuer x,y,direction, distance, target visible, elapsed time, etc. Action two axes and capture. Well-known "predator-prey pursuit" or "continuous foraging".
+
+Perhaps game is "Pac-Man" style "chase in a circular arena" called "Sheep and Wolf" / "Rabbit and Wolf". 75-second episodes = classical "Chase" game in "DMLab" (LaserTag?). DeepMind Lab "explore_goal_locations_small" etc observations pixels, not 14.
+
+"OpenAI Gym safety" "Goal0" etc obs vector 14? "Safety Gym" has lidar 16 etc, actions2. "Mujoco Reacher" obs 10 act2. "FetchSlide" etc.
+
+Could be "Pets" "Pusher" no.
+
+Could be "Ikaruga"? no.
+
+Perhaps environment "Gymnastics" "dart throwing" with two hands: two arm joints positions and angles. 14 inputs and 3 action matches "Slither" "TriFinger". But binary contacts and tiny velocities. Game "Cup catch" / "Ball in a cup". First six = cup position,orientation and ball position,orientation, input6 distance, 7 ball in cup, 8 cup velocity, 9/10 contact, 11 something. Agent controls cup x/y/rotation, reward catching ball. Angles ball/cup ignored? Cup orientation essential.
+
+"Pen spinning"? no.
+
+Input 0-1 values likely not actual positions but health/resources. 0 and1 could progress bars; 2/5 angles likely joint angles. Could be "hand manipulation": two objects joint angles. But three action values motor torques. If first six = target pos/heading and object pos/heading, yes.
+
+Input 8 max .5 = time? input11 small = reward? Usually observation includes elapsed time in seconds scaled? One step .25, max 300. If time remaining input8 0-.5 perhaps normalized 0.5 at start and decreases. Row8 huge negative weights could time? If max .5 and time decreases, policy time dependent. Input11 small often 0-.1 could velocity. Many binary flags are contact sensors.
+
+Could be "Bounce" / "Basketball": player and ball positions/headings, speed, held, ball height, contact flags, vertical speed, scores. Third action shoot. "Basketball" has ball height range 0-.5 perhaps normalized? Height typically 0-1? Input11 vertical velocity .1. Game "Catch the ball" plausible. Angles ball/paddle ignored because circular.
+
+"Volleyball": two player positions and ball? only two triplets (self and ball), opponent absent. SlimeVolleyball obs 12: agent x,y,vx,vy, opponent x,y,vx,vy, ball x,y,vx,vy. Actions 3 discrete (left/right/jump). Here continuous 3 actions could left/right/jump? Two angles no.
+
+"Tennis" similar.
+
+"Pong" continuous 3 action? no.
+
+"Juggling" perhaps 3 action two paddle axes and hit.
+
+"Golf": ball and hole positions, angle, distance, club state, strokes etc. Three actions swing direction,power? Angles irrelevant? Input2 ball angle unused and input5 hole angle unused nonsensical but target orientation always default. Action values [club angle, force, ...] weights output first two perhaps aim/strength. Game could be "Mini golf", 75s episodes, positions normalized. Input8 range .5 could stroke power. Binary flags sunk/out of bounds. Third action perhaps putt. But why heading states for hole? no.
+
+"Archery": player and target positions/orientations, bow draw etc. Third action release. Target angle irrelevant? Self angle should matter. no.
+
+"Frisbee"/"Boomerang" similar.
+
+Could be "Darts" but no continuous movement.
+
+Perhaps game "Marble run / Labyrinth" controlling board tilt (2 actions) and something, with ball and goal. Observations positions and angle for ball/goal, distance, contacts, speeds. Angle irrelevant. Third action perhaps tilt z. Game "Maze" with 3DOF sphere torque. Reward reaching goal. Could be "Lunar lander" extended with target? In LunarLander obs x,y,vx,vy,angle,angularvel,leg contacts; actions2. My first two triplets x,y,angle, plus speed, contact, etc. Actually lunar lander with 2 landers? no.
+
+Could be "Docking" task: two spacecraft x,y,angle, relative speed, docked, distance, fuel, contact etc. Angles crucial, but network ignores suggests not.
+
+"Flight" no.
+
+I'll consider normalized 0-2pi could be timers not orientations? 0-2pi could be angles of a *cyclic task*, e.g. two oscillators (two moving targets) sin phase. Inputs 0/1 and 3/4 0-1 = positions, input2/5 = orientation. Clear.
+
+Could be observations from "PyBullet Kuka" etc: positions and quaternion? no quaternion uses 4.
+
+Perhaps first two values are "joint angle sin/cos" range0-1? third orientation. But likely.
+
+Question intentionally asks work from weights and gives ranges. They expect use row norms to see angle ignored, binaries etc. Could map game based on "the agent ignores its own and opponent's orientation, mostly uses target position, distance, and an action cooldown; 3 actions = move in 2D and catch/shoot; output layer first two dense, third sparse." Game = "Tag" likely strongest. I need articulate.
+
+Can output col2 sparsity indicate a "hit/kick" button. Which game uses move x,y and "bark"? "Sheepdog" herding: dog and sheep positions/headings, distance, flags. Agent herds sheep to goal; reward based on sheep position. Third action perhaps bark. Well-known experimental paradigm "sheep herding". But target heading should matter for herding? Dog heading irrelevant direct movement, sheep heading relevant for prediction but could be ignored. Input 8 etc pen. Not enough.
+
+"Chase" tagger doesn't need tag action; proximity automatic. Third action could be dash/sprint. Input8 = stamina boost cooldown strongly weighted. So tag with sprint. Input7/9/10 flags perhaps walls contacts. Game "Tag with dash".
+
+What game has "eat" action? "Pac-Man" continuous 2D movement and "eat" automatic. Third action perhaps jump. "Hide-and-seek" third action grab.
+
+Could be "Dodge the bullet" with third action irrelevant. Output action2 could have collapsed to nearly zero except rare weights due never useful. If action2 is rotate/jump and task only requires movement, sparse weights not necessarily used. b3 all ~0.1 yields logstd ~.033; action means baseline small. Third action may be mostly unused (P3 col2 weights mostly small), except 3 strong features. If action2 is jump, mostly used in rare states. In "Mario" (run/jump/attack), positions/angles no.
+
+Game "Fighting ice hockey" action 3 = hit.
+
+Could be "RoboCup Soccer" where agent moves in 2D and kicks. Angles not needed if kick omnidirectional. Observations self and ball x,y,orientation, distance, possession flag, kick cooldown, etc. Reward scoring goal. Fixed goal at top of arena means y more important than x. Indeed input1 (own y) stronger than input0, and input4 (ball y) moderate. If goal at top, y position is crucial. In tag, x/y symmetric, so why y row1 almost 2x row0? Could be anisotropic because arena boundaries or goal vertical. That suggests progression along y: Pong/air hockey/soccer. Output col0 has more strong weights than col1, perhaps x movement more demanding while y tracks progress. Game "Soccer" often field wider? Ball x/y both needed.
+
+If game is "Pong", agent y only and x fixed. Own x input0 would be nearly irrelevant, but row0 moderate. Target/paddle x input3 moderate. Not.
+
+"Keepy Uppy" ball: y crucial, x less.
+
+"Basketball" hoop location fixed, y crucial? no.
+
+"Race" game: y forward progress crucial, x steering. Two entities = self and opponent. Headings ignored? racing needs heading but if track straight no. Action = steer, throttle, brake. Observations self x,y,angle; opponent x,y,angle; speed; lap flags; etc. Three action values naturally steering, throttle, brake. Input6 speed strong. Input8 progress or off-track 0-.5 strong. Input11 small acceleration. Binary flags checkpoints/laps. 75 sec race. Game could be "Turtle race", "Skiing", "Foot race". Angles near zero odd for racing but if steering uses track error x and speed.
+
+"Car racing" 3 actions steer/gas/brake and obs vector? Gym CarRacing obs pixels. Custom "Race" top-down. Opponent positions. Input8 max0.5 perhaps steering angle? input11 small angular velocity. Binary flags collision/off track. Could be "running race" no action3.
+
+"Track and field hurdles" with jump.
+
+Game "Ski" avoiding gates: positions etc.
+
+Could be "Chicken" two cars approaching, actions steer/accelerate/brake. Well-known game "Chicken" experimental paradigm. 14 obs with two car poses, speed, flags. Reward not colliding / crossing. Input8 0-.5 could time-to-collision. Third action brake. Hmm.
+
+"Pursuit-evasion" also car with 3 actions steer/throttle/brake and heading should matter. Ignored angles argues kinematics is holonomic.
+
+Output col0 likely movement x, col1 movement y, col2 sprint or tag. In tag, distance and opponent positions dominate. In race, speed and track features dominate. Input8 could "stamina" range .5, used for sprint. Game perhaps "Run and chase" = "British Bulldog".
+
+Can I derive role from weights sign? E1 row8 col39 = -1.286. Row8 is key scalar. P3 etc too deep to infer. Could see row8 has large weights and E2 row39 then P? Row39 h1 feeds latent, but layer norm complicates. No.
+
+Perhaps input8 is "health" with max .5; row8 huge suggests health drives policy. In "Tag", no health. In "Boxing"/"fighting", health crucial. Input6 about1 could distance, input8 0-.5 "time remaining" normalized? input11 small "hitstun". Binary flags can be grounded and attacking. Game "Fencing" has health/stamina, 3 actions move x,y attack. Agent/opponent angle irrelevant if avatars circles. "Swordfight" needs facing if directional attacks but could attack omnidirectional.
+
+Game "Dodgeball": health hits, ball cooldown, can catch/throw. Agent and opponent positions/angles, distance, ball state flags. 3 actions move x/y, throw. Ammo cooldown. Reward hits. But no ball position separately when in flight unless input8 time.
+
+"Gun duel": player and enemy position, angle; health, cooldown, bullets; actions move x,y,shoot. Angles should aim but perhaps auto-aim at enemy. Game "Shooter" autoaim.
+
+"Boxing": only two fighters, 3 action move/turn/punch. Positions and orientations. Distance key, cooldown key, health. Could resemble "Rock 'Em Sock 'Em Robots" or "Sumo". Sumo reward pushing opponent out, no attack cooldown, orientation irrelevant, contact flags. Third action could push. Input11 small could opponent speed. Sumo has 2D movement+shove. Ranges input8 .5 could distance to ring edge (0 to.5), hugely attended—critical to avoid elimination. That is interesting! Input8 max .5 could "distance to boundary" in normalized arena centered at 0.5, so 0-.5. It strongly weights it: staying in ring matters. Input6 distance between agents. Binary contacts etc. Game "Sumo" = push opponent out while stay inside. Positions x/y 0-1, heading angles, separation, speed, ring radius distance (0-.5), contacts. Actions x/y force and rotate? Could be sumo bots. Angles ignored if circular agents. Three actions could forward/strafe/turn, but if direct x/y + dash. Well-known game "Sumo". Does question likely ask "game as specifically as you can" => "Sumo wrestling" perhaps.
+
+Another ring game "King of the Hill". Input8 range0-.5 perhaps radius.
+
+Input6 "about 1" could be distance normalized diagonal ~1.4 but about1. Input8 0-.5 could "health" no health halves weird. It might be "arena radial coordinate" max0.5. If normalized x,y in [0,1], distance to center max ~0.707; radial distance to edge max0.5. A circular arena of radius .5, radial distance from center 0-.5. Could be own distance from center. Strongly used, crucial if ring boundary. In tag, radial distance less important unless bounded circle; can still matter avoiding walls. In "Sumo", ring position is key.
+
+Game "Puck pushing"/"Soccer" ring not.
+
+What about "Marbles" game: two circular agents on circular table, push other off. 3 actions? "Sumo" indeed.
+
+Binary inputs 7,9,10,12,13 could be "touching opponent", "touching wall", "out of bounds", "won", "lost". input11 small nonneg = speed? Usually speed ~0-.1 per step. input6 about1 could distance. input8 radial position .0-.5. Why input7 and12/13 weak? Terminal flags rarely active during training and constant zero, weights small. Input9 and11 strong = ongoing states (contact, velocity). input10 small = rare flag. This pattern fits physical contact game: active opponent distance, center distance, speed, collisions, terminal win/loss flags.
+
+Perhaps game "Bumper cars" (sumo). 3 action = move in x,y and rotate/ram. If reward survival or pushing. Could be "Push" task.
+
+Well-known experimental paradigm "chicken" also boundary? no.
+
+Perhaps "Muscle-based tug-of-war": positions and angle, force, contact. no.
+
+What games use radial distance to center? "Sumo" and "King of the hill", "Agar". A circular arena likely. Tag often square arena but could circle.
+
+Input 8 could be "time to live" not radial.
+
+Could be "Lava" avoidance with health etc.
+
+I'll analyze which input is ignored vs used to distinguish 2 agents roles. input6 strong = separation. input8 huge = perhaps "relative angle" but range0-.5. input11 strong = small value, likely velocity. If input8 radial position, self distance to center. If there were two radial distances would need two inputs. Only one scalar suggests only self ring radius, opponent radius computed from pos if needed. Input6 separation similarly redundant with pos but useful engineered features. So observation likely handcrafted for task with agent position, opponent position, distance, speed, radius etc.
+
+Could layout be:
+0 agent_x
+1 agent_y
+2 agent_heading
+3 opponent_x
+4 opponent_y
+5 opponent_heading
+6 distance_to_opponent
+7 in_contact
+8 agent_speed? 0-.5
+9 opponent_contact?
+10 agent_out?
+11 time_since_last_tag
+12/13 flags?
+If speed max .5 plausible per step, but input11 small could angular speed. Row8 huge for speed suggests sprint control.
+
+Could be "Joust" with speed to ram, ring.
+
+Agent velocity range 0-.5 and opponent velocity small? Only one scalar speed perhaps own. Input6 "distance" normalized 0-about1. input7 "on ground". input8 "stamina" max0.5. 9 "sprinting", 10 "tackled". 11 "time since sprint" small. 12/13 win/loss. This is "Tag with sprinting".
+
+Could be game "Bullfight"/"Catch the runner".
+
+Potential named game "British Bulldog" / "Shark and Minnows". Well-known paradigm "predator–prey". If output third action = lunge, key cooldown, and ring boundary, game "Tag".
+
+Question phrasing singular "game played in this arena" perhaps there are custom games in "Moral machines"? They ask "which game was it trained on?" and response should be one of "tag, hide-and-seek, capture the flag, keepaway, sumo". Should provide confidence modest.
+
+I'll think of observations typical for "RoboSumo" environment in "Neural MMO" etc:
+RoboSumo agents are humanoids, obs 397 etc not14.
+"Sumo" in "MAgent" has 2D vector state? MAgent2 "battle", "gather", "combined_arms", "tiger_deer". Observations (13x13 channels) and discrete actions.
+"DM Control soccer" obs high.
+"OpenAI multiagent particle environments simple_sumo" obs? MPE "simple_tag" 14 dims exactly? I'll recall MPE simple_tag observations:
+for adversary agent:
+obs = [agent.state.p_vel (2), agent.state.p_pos (2), landmarks rel pos (2*1), other agents rel pos (2*3?)] maybe 2+2+2+6+6? 18.
+For good agent:
+[p_vel2,p_pos2,landmarkrel2, other_agentsrel2*?] =? 16.
+Not my structured angles.
+MPE "simple_world_comm" etc.
+"Pistonball" obs image.
+"Multiwalker" obs 31.
+"Simple Spred" 18.
+
+"Gym-RTS"? no.
+
+Custom game could be "Tanks" in "Neuroevolution of augmenting topologies" benchmarks. NEAT "sumo" with 14 sensors and 3 outputs. "Jousting" / "Robot Sumo" often agents sense [own x,y,heading, opponent x,y,heading, distance, ...]. Exactly. Experimental paradigm "dueling" / "competitive coevolution".
+
+A physical game with two circular robots and 3 actions [left motor,right motor,?] usually 2 actions. Three [forward, turn, push] perhaps.
+
+"Tank combat": observation includes two tank poses, speed, cannon ready, bullet time, hit flags. Actions 3 = forward, turn, fire. Output col0/col1? If col0=forward and col1=turn, both dense. col2=fire sparse. That fits strongly. Angles being ignored problematic: to aim/fire, opponent heading not needed, own heading absolutely needed for turning/aiming. But network could encode own heading indirectly? Row2 almost zero impossible. If tank autoaims and direct movement x/y, fine. Or action0/1 left/right track throttle, need own heading. Not tank.
+
+Game "Asteroids" own heading crucial. Ruled out.
+
+Game "Boxing" own facing might not needed if punches autoaim. Still.
+
+Could input2 and5 be not headings but phases irrelevant by design (e.g. visual animation). Could network learned to ignore even though useful because fixed policy? If heading nearly constant 0 during task, no need. If game is top-down direct control, orientations might always follow velocity but not needed. If they are joint angles but vary, ignoring means game doesn't use them.
+
+First two triplets could be "agent pose" and "opponent pose", but angles could simply be decorative.
+
+Perhaps "game" is "Hockey" where entities are striker and puck, angles decorative. Action values [move_x,move_y,kick]. Puck and striker circles. Reward scoring. Input8 [0,.5] could distance to own goal or y bound, critical defense. input11 small puck speed, strongly weighted. Input6 distance striker-puck. Binary flags puck possession, scoring. This fits air hockey: puck velocity ~0.1; player speed .5; distance ~1; contact flags; goal flags. 3 actions = paddle x,y + hit? Air hockey often paddle velocity 2D only, no third. "Foosball" has kick action.
+
+"Billiards": ball speed small; input8 max.5 could ball height? no.
+
+"Handball" ball speed small, actions move+throw.
+
+"Soccer" ball speed small; own stamina .5; distance ball; flags possession and goal; actions move+shoot. Own and ball orientation decorative. Reward scoring. Most plausible sports task "Soccer / 1v1 keep-away".
+
+If opponent is absent, self and ball. Inputs:
+0 self x
+1 self y
+2 self theta
+3 ball x
+4 ball y
+5 ball theta
+6 self-ball distance
+7 ball held?
+8 ball height? 0-.5
+9 self near ball?
+10 goal scored?
+11 ball speed
+12/13 goal flags
+Agent actions move_x,move_y,kick. That is "Golf" or "Soccer". If ball held no opponent, goal fixed. Could be "Kick the ball into goal" ("Soccer").
+Input11 speed of ball typically .0-.1, used to intercept. Row11 strong. Input8 own speed max.5, strong. Input7 perhaps kicking, 9 possession,10 out. 12/13 scores.
+
+"Catch" moving ball: self and target, target velocity small, distance, own speed, contact flags, third action catch. Reward catch target. Similar to tag.
+
+Game "Frisbee fetch": dog and frisbee poses, dog speed, frisbee height .5, frisbee speed small, catch flag, ground etc. 3 actions move/jump/catch. Well-known "Fetch". Agent dog catches frisbee. Input8 range .5 could ball height (normalized arena height .5) crucial, row8 huge. Input11 small vertical speed. Angles irrelevant. Could be "Balloon popping". Hard to pin.
+
+Question probably designed with one uniquely recognizable structure: 14 inputs exactly perhaps "Fighting" or "Hockey" in "Animal Well"? Could be "Pong" generalized. Should look at row input importance: if ball game, ball x,y rows3/4 and speed row11 matter. Self position rows0/1, distance row6. Own speed row8 matters. Yes.
+
+Input7/9/10/12/13:
+- 7 self on ground
+- 9 ball on ground
+- 10 catch success?
+- 12 ball in left goal
+- 13 ball in right goal.
+Game could be "Volleyball". Ball has z coordinate? No z except input8 perhaps height. Volleyball needs jump (action2), x/y positions of player and ball, ball heading not needed. Player x,y 0-1; ball x,y 0-1; orientations irrelevant; distance, grounded, ball height 0-.5, hit flags, vertical velocity small, out/score. Agent moves x/y and jumps/hits. This is "Volleyball" / "Slime Volleyball". Episode 75 sec. Reward keeping ball in play/scoring. Could be "Juggling"/"Keepy-uppy".
+In volleyball, ball height would typically 0-1 if normalized, not .5. Player y position could vertical? Heading? Hmm.
+
+Game "Tennis" ball height max .5 court width? 3D.
+
+Could be "Badminton" shuttle.
+
+"Ping pong" 3D and 3 paddle actions, obs 14. But paddle angles crucial? no.
+
+Output action2 dominated by p2 units 5,21,85 etc: action2 highly correlated with action0? unit21 negative both 0,2, unit85 col1 negative col2 positive, unit5 col2 positive. Could be "jump/hit".
+
+Could determine third action likely "dash" because only some states. In sumo dash could key.
+
+Perhaps this is "Hoard" or "Bait" with reward based on "pecking" in psychology. The prompt says "if it resembles a well-known game or a well-known experimental paradigm, give its name". If expected soccer, no need experimental paradigm. That clause likely invites "pursuit–evasion (predator–prey)" because game may be custom, not well-known. Could be "foraging / patch-leaving" or "approach–avoidance".
+
+Could be "Chicken" game specifically well-known game and paradigm. Two cars poses, speed, distance, etc, actions acceleration/steering/brake. Reward not colliding and not swerving? But angles ignored impossible to steer. "Hawk-Dove" etc no spatial.
+
+"Stag hunt" spatial: agent and partner positions/orientations, distance, capture states, speed; actions 2D + choose. Angles irrelevant. Reward catching stag vs hare. Should multiple target positions, not present. "Coordination game" "Meeting at a point" with two agents. Third action signal. Input flags choices. Could be "rendezvous" task. Distance and positions, speed, contact. Reward proximity. Game "Follow the leader" or "mirror game".
+
+"Mirror game" experimental paradigm: two players moving along lines, coordination. 14 obs and3 actions? no.
+
+"Prisoner's dilemma" no positions.
+
+"Pursuit-evasion" is overwhelmingly likely from two moving entities and distance/speed.
+
+Which role? Could be "Evader" trained to escape (survival) vs "Pursuer" catch. If third action output sparse perhaps pursuer can "tag". If evader, third action could dash. Both.
+
+Input 12/13 could indicate "tagger" and "tagged". If agent role switches, network uses both. input12 modest, input13 near zero = one flag mostly constant. Could be self and opponent "alive". If pursuer reward capture, terminal flags constant until episode end so low weights. Good.
+
+Input7 perhaps "is_it" and input9/10 "can_tag"/"stunned". If network trained as pursuer always, is_it constant and low weight; but row7 moderate, so not constant.
+
+Perhaps network trained in "Tag" where agent alternates role based on who was tagged. It must know whether currently chasing or evading. One binary flag for "am_tagger" strongly weighted, and other flags for cooldown. Output movement changes accordingly. Row9 moderate could role. Input6 distance strong. That would be classic game "Tag". Three actions x/y movement + sprint. 75 sec tag matches.
+
+"Freeze tag": flags frozen, frozen teammates, action unfreeze. Only two agents, frozen state, tagger. Reward not frozen. But 12/13 rare.
+
+Game "Capture the flag": flag states important, position only two entities and known fixed goals. Role can attack/defend. Third action pickup.
+
+No information about flags coords means flags fixed at ends, possible. Agent/opponent poses and distance, carrying flag flags, scoring flags. Reward capture. Own distance to base (input8 0-.5) crucial. Actions move+grab. Could be "Capture the Flag". But input6 distance opponent and input8 distance flag? only one distance. 75 sec common.
+
+"Keep-away": reward holding object, has_object binary, opponent distance. Action move+grab. Object location if not held? Could be attached to one player. Input8 time holding .5 max? no.
+
+What scalar has range0-.5 naturally? "Cooldown" max 0.5 seconds. Many custom environments set action cooldown 0.5s. Since one step .25 sec, cooldown takes 2 steps. Input8 strongly weighted, likely can shoot/tag every 2 steps. "Stamina" would range0-1 not .5. "Distance to center" naturally .5. Which more likely? Prompt states "a number from 0 to 0.5", not "about". Could be exact cooldown or arena radius. If normalized time remaining episode 75 sec perhaps max 0.5? no.
+"non-negative number, typically between 0 and 0.1" unbounded likely velocity. "a number from 0 to about 1" likely distance with diagonal. "0 to about 1" perhaps norm distance. "0 to 0.5" could own speed capped. If speed capped at .5 exact. 0-.5 units/sec vs other velocity .1 typical. Input8 could maximum acceleration? Hmm.
+
+Observation 6 distance between self and other (0-about1).
+7 "can_see_target" binary.
+8 "own speed" 0-.5.
+9 "target visible" etc.
+11 opponent speed typically0-.1.
+Two entities with very different max speeds: agent can sprint 0.5, target speed .1. Pursuer faster than evader. Tag game.
+
+Input 8 speed strongly weighted because moving fast controls pursuit. Input11 opponent speed used predictive chasing. Own orientation ignored because direct motion. Game = chase faster agent catching slower moving target. Third action perhaps "pounce".
+
+"Predator-prey" predator speed .5 vs prey .1. Binary flags = contact/capture, stamina. Good.
+
+Perhaps "Falcon hunting" etc.
+
+"Fishing" fish speed .1, boat .5.
+
+Could be "Dung beetle" no.
+
+Game "Cat and mouse" specifically. I can respond as cat-and-mouse / tag pursuit-evasion. Description: agent steers in 2D, closes on moving opponent and uses third action to tag/catch when in range, rewarded for captures (or avoiding if evader). Should not hedge in description? Should assert.
+
+But if wrong, confidence 40%. Could say Game: "A top-down two-agent chase/tag game—i.e. the predator–prey (pursuit–evasion) paradigm, with the policy playing the pursuer." Confidence 55. User wants specific. Could mention no evidence for exact commercial title.
+
+Make sure observations quote weights and per input each. I can create table or list with max approx:
+0 moderate: min -.166 max .131, most .02-.1. Suggest own x used, less.
+1 strong: -.213,.189,.172,.165 etc. own y used.
+2 almost zero: max .060 except -.101, typical .00-.03. own orientation ignored.
+3 moderate: -.187,.134,-.144,.113 etc. target x.
+4 moderate: -.147,.176,.132,.130 etc target y.
+5 near zero: max .054 etc except -.080,-.058. target orientation ignored.
+6 strong: -.234,-.191,-.180,.151,.135 etc distance/speed.
+7 moderate weak: -.175,-.142,-.126,.109 etc.
+8 strongest sparse: -1.286,-.497,.324,-.291,.241,.223,-.244 etc. key continuous resource/cooldown.
+9 moderate: -.180,.138,.123,.101 etc.
+10 weak: max .065,-.068,-.148 etc mostly small.
+11 strong: -.444,-.428,-.313,-.274,-.256,.236,.228,.211 etc, despite small range.
+12 weak/moderate: .072,.067,.065,-.062 etc.
+13 weakest: .079,-.071,.069 etc mostly small.
+
+Input mapping likely own pose, other pose, separation, event flags, speed/cooldown. I should phrase suggestions not certainties. Output P3:
+col0/1 movement channels dense baseline many .04-.1 and strong: col0 row8 .978,row66 .996,row21 -1.222,row79 -.896,row71 .537; col1 row85 -1.116,row50 .565,row56 -.545,row18 .555,row61 -.451,row58 .386. col2 sparse: row5 .894,row21 -.891,row85 .725,row79 .280,row7 .254,row51 .231,row20 .224. So 2 main continuous controls plus event gated third. b3 .091,.007,.061 near zero, no fixed extreme; log std b3 .095,.111,.049 and weights small ~.1, logstd ~-3.4 (std .03) so near deterministic. Not vital.
+
+Reasoning: rules out pure 1DOF tasks and angle-critical driving/flying/aiming (angles zero). Two xy pose tracks plus distance and speed, 2D translation + context action fits tag/chase/contact sport. No inventory/map/multiple object channels, so not soccer? Soccer could fit, but absence goal info doesn't rule fixed goal. Should explain sports less likely because only two objects and no goal/field state, and dominant separation. Sumo also fits. Should choose perhaps "sumo" over tag based on third action and scalar ring radius. I'll examine policy output: in tag with action2 sprint, speed input8 strong. In sumo, movement 2D and shove action. Which reward easier? Distance opponent, ring radius, contact flags. Angles ignored. Both. I can mention alternative in reasoning? User wants one game but can state closest and confidence. If mention sumo as less likely, shows considered.
+
+Could there be a very specific game "Pursuit" in "PsychLab" or "Chaser" in "BSuite"? "BSuite catch" observations 10? "DM-Humanoid chase" no.
+
+Perhaps known game "Pig" / "Catch the pig" from "Craftax"? Hmm.
+
+"EvoArena" with games "Sumo", "Tag", "Race", "Soccer" often normalized observations and TD-MPC2. Arena could be "Pupper" etc. The puzzle likely from "Playgrounds" tasks. A set of "games in this arena" may include "Duels", "Running", "Touch". "The network's weights belong to one policy... game in this arena" no list. The task itself impossible exact from weights, intended approximate identification. Should be honest confidence moderate.
+
+I'll explore possibility "keep away / tag" vs "sumo" with output action 3 and input flags. Tag usually requires only 2 actions, and action2 could be "jump" if game uses 3. Sumo also only 2. Both include sprint as third. Which games typically use three continuous values? Environment control scheme might globally 3 action values for all games: e.g. [move_x, move_y, interact]. Then any game uses same. If arena is a custom physics world with agents having 3 action values (move x/y, rotate) universally. Then output third sparse doesn't indicate interaction but rotation less used. The observations include angles but ignored means agent uses direct force x/y and torque optional. Third output = torque, mostly unnecessary, circular agent. This fits sumo/tag. If global control [x,y,rotate], sparse angle control. Output col0/1 dense, col2 sparse. So agent is circular disc that can translate/rotate but rotation irrelevant. This is typical "Pymunk" physics games. Games in arena: "sumo", "soccer", "tag". A disc agent has pose angle but ignores.
+
+If action2 rotate, col2 sparse strongly because orientation mostly irrelevant. Then tag/sumo both. Input8 could "speed", input11 "angular velocity" tiny. 5 binary contacts.
+
+Physics environment with 0.25s step and continuous force controls perhaps "Pymunk". Position normalized, angle 0-2pi, speed normalized, contacts binary. Could be "Pymunk games" e.g. "Billiards", "Sumo", "Pong".
+
+In sumo, orientation irrelevant for circular discs. Two discs poses. input6 could distance, input7 collision. input8 speed. input9/10 touching boundary? input11 angular velocity. 12/13 out of ring. Exactly. Agent disc and opponent disc, separation, own velocity, opponent velocity? Observations only scalar speeds not velocity vectors, but positions across time let model infer dynamics via latent memory? TD-MPC2 policy feedforward no recurrence; planner model uses history? Policy one obs. Speeds scalar enough for aggressive motion.
+
+Tag discs similarly.
+
+Reward in sumo for pushing other out; input8 own speed key for ramming, distance and positions. Input9 collision strongly? Row9 moderate. input11 opponent speed strong. Terminal flags low. This is highly plausible.
+
+If game "Tag", reward distance/capture; speed crucial. Same.
+
+Which would use input8 0-.5? Sumo ring radial distance strongly key. I'll hypothesize exact obs:
+0 own_x
+1 own_y
+2 own_angle
+3 other_x
+4 other_y
+5 other_angle
+6 own_speed? 0-about1
+7 own_contact?
+8 other_speed? 0-.5
+9 own_dashing?
+10 other_dashing?
+11 distance? typically0-.1 because agents stay close
+12/13 win flags.
+If distance input11 small typical, strong weights. Then task where agents remain close, sumo/fighting. In tag distance varies large, not typically small. Input6 about1 could stamina? Hmm.
+
+Input11 non-negative small could "time since collision" no, if collision recent typical small? Speed likely.
+
+Can I infer positions from weight asymmetry: own y stronger than own x, other x/y similar. Sumo ring symmetric so own x/y norms should roughly symmetric unless random training. Tag also symmetric. Soccer goal direction y yields asymmetry. This is evidence soccer/race. Own y .096 vs own x .058 ~1.65; other y .069 vs x .067 symmetric. Own y specifically matters due vertical boundaries/progress. Perhaps agent controls paddle horizontally? Hmm.
+
+Output action0 has more huge features than action1, suggesting horizontal movement complex; own y input key determines forward direction. Could be "Vertical jumping" game where action0 horizontal, action1 forward, action2 turn. Own y (forward) progress reward, opponent x/y for interactions. Race/game "Chicken".
+
+If soccer: own y matters attacking goal; opponent y matters equally? row4 .069, similar. Ball vs opponent? If other is ball, its x/y similar importance; own y more because distance to goal. Exactly. Agent x less important except alignment, own y determines shooting decision. Input6 distance to ball strong. Input8 speed strong. Input11 ball speed. Binary possession and scoring. Third action kick. This yields "Soccer" strong candidate. Ball and player orientation ignored. Reward scoring goal. Game resembles "keep-away/soccer".
+
+If other is ball, why angle of ball 0-2pi? Ball rolling angle can be arbitrary and irrelevant. Great. If other is opponent, angle also irrelevant. Both.
+
+Input7/9/10/12/13 could be:
+7 kick_available
+8 kick_cooldown?
+9 ball_in_play
+10 goal_scored
+11 time_since_kick
+12/13 own/opponent goal flags.
+This fits 1v0 soccer shooting task.
+
+Would a soccer task need goal position input? Fixed goal at top. Yes.
+
+Perhaps game "Golf" also fixed hole, ball orientation. Own y progress, distance ball, own speed, ball speed, action2 swing. But moving avatar + club? Soccer more likely.
+
+"Basketball" fixed hoop, action shoot, ball speed. Height missing, so not.
+"Hockey" fixed goal, puck instead ball, 2D exactly. Game "Hockey" with player and puck. Three action move x,y,hit. Angles irrelevant. Which of soccer/hockey? Ice hockey puck speeds .1, own speed .5. Distance. Could be "Air hockey" if other is opponent mallet and puck absent impossible. So "soccer" if only player+ball.
+
+"Foosball" player+ball fixed goal. Soccer generic.
+
+Could be "Kick and catch" known "RoboCup". Well-known experimental paradigm "keep-away" uses ball and opponents, but only 2 entities no opponent.
+
+The prompt says "what gives reward" perhaps task has reward not obvious. Tag: catching. Soccer: goals. Sumo: pushing out. I need decide by weights not possible. Could give confidence 35% and describe broad. But User expects response likely exact. I should maximize chance by choosing most general "tag/pursuit" because two moving agents and no goal. Confidence perhaps 45.
+
+Look at "The Observation" wording "state of its environment" not "agent and opponent". They deliberately omit semantic mapping. I infer. "The game played in this arena" suggests video game, not robotics. "What environment does with actions not stated." The correct response could be "Pong" etc. They expect infer via trained weights, not observation alone. I need use pattern of unused inputs: input2/5 unused = orientation. P3 action2 sparse = discrete special move. This pattern exactly "tag". Why? If soccer, ball angle unused, but player angle too. Both direct.
+
+Perhaps game "Janken" with movement? no.
+
+Could be "Capture the Flag" where third action pick up, many flags. But only 2 poses and distance means tag.
+
+I'll think standard custom minimal games with observation size14 and action size3 from "DynaMimic" or "Brax" "Ant Tag". Brax "Ant" obs87 act8. No.
+
+"JAX2D" "2D sports" environment:
+- Tennis: state player pos (x,y), ball pos, velocities, score etc.
+- "Sumo": two player positions, angles, velocities, health.
+- "Tag": positions, directions.
+- "Pong": positions.
+All use continuous actions [ax,ay,rot].
+
+TD-MPC2 requires fast sim 0.25 sec. Max300 = 75 sec typical for *sports game* "Slime Volleyball" episodes often 3000 frames. Tag episode often 30 sec. Sumo ends quickly when out, max75. Soccer scoring episodes max75.
+
+The max episode detail included to infer time-scale. "One step .25 seconds" unusually coarse physics. Tag/soccer with simple kinematics. 75s is common "Kabaddi" match? "Kabaddi" raider has 30 sec, 7 players. "Kho-kho" chase.
+"British Bulldog" 75s.
+"Joust" rounds short.
+
+Perhaps game "Keepy Uppy" needs quick .25.
+
+Could be "Fishing" game "Nab the sheep".
+
+I think response should be robust: identify as pursuit/contact game, name tag, mention closest alternative sumo? I can phrase Game: "A top-down two-agent chase-and-catch game—Tag (the pursuit–evasion / predator–prey paradigm), with a separate lunge/tag control." Description assert pursuer. Confidence 50%. If true expected sumo, broad observations similar but response wrong. Could broaden game to "a physical chase/contact game, most likely Tag" but User wants game. Include alternative sumo in reasoning and confidence.
+
+Could I use input 8 large weights sign to infer attack cooldown -> "Tag" special action. If ring radius, sumo. Which scalar is likely named "boost" max0.5? The environment step .25 sec, cooldown max.5 sec is two steps; too short to be important, yet huge weights. If boost meter range .5, yes. Ring radius constant crucial, likely huge weights. So sumo may be more likely. Also tag capture by proximity no special action needed; third action could sprint. Sumo needs "push" action and ring position. The scalar at exactly .5 strongly suggests radius. I'll lean Sumo? I need weigh.
+
+What does a typical sumo observation include:
+self: x,y,angle (3)
+opponent: x,y,angle (3)
+self_velocity magnitude? input6 0-about1
+self_in_ring? input7 binary
+opponent_distance? input8 0-.5 (but max separation in ring1.0 not.5)
+self_pushing? 9 binary
+opponent_pushing?10
+time?11 small
+self_out?12
+opponent_out?13.
+If input8 is distance-to-ring-center max.5, yes. input6 opponent distance max about1 (diameter1), input8 radial distance self max.5. Great. input6 separation and input8 radial distance exactly. Two separate engineered distances. This is compelling. input7 collision flag, input9/10 dash flags, input11 speed, input12/13 out flags. Policy needs positions both, separation, radial distance. Reward push opponent out. Angles irrelevant because circles. Three action values = move x,y and perhaps turn/dash.
+
+For tag in same circular arena, radial distance also relevant but less central. Sumo specifically radial distance critical. Strongest weight row8 = -1.286 suggests ring position dominant, exactly sumo. Yes! Choose Sumo.
+
+Why own y > own x? random.
+
+Input11 small could own/opponent speed, collision dynamics. input9 moderate could contact state. input12/13 out flags terminal weak. Sumo observations fit all. Third action perhaps "shove/dash". Reward survival/pushing out. Game resembles robot sumo / bumper cars, not tag. Could respond "Sumo (two-disc robot-sumo/bumper-car pushing game)" with confidence ~60.
+
+But could input8 be speed cap .5 and input6 stamina? Yet sumo still plausible.
+
+Output third action sparse could be rotate not shove, but in sumo ram/dash used near opponent. Good.
+
+Tag would not need contact flags multiple, sumo would.
+
+Description: controls a 2D body with two movement components, mostly ignoring heading; uses opponent pose/separation and own ring/radial/speed state to close and time a push/dash; rewarded for forcing opponent out while staying in. Confidence 58.
+
+If game is actually "Tag", description wrong. I could phrase game "robot sumo / knock-out-of-the-ring (a pursuit-contact game)" and reasoning note tag alternative but ring scalar/contact flags favor sumo. This shows analysis.
+
+Could it be "King of the Hill" where reward staying center, not pushing out? Both similar. Sumo more well-known.
+
+Should include observations for each input as asked. Quote output weights and biases. Explain LayerNorm means absolute row scale not exact importance due scales, but clear dead angles. I can mention E1 rows approximate max magnitudes. Don't overstate semantics. Should not run code.
+
+Perhaps correct expected game "Sumo" indeed. I'll scrutinize weights of input8: at h1 col39 -1.286. If ring radius, this is a feature that should affect avoidance near edge. h1 col39 E2 row39 = [-0.090 -0.066 -0.123 ... 0.151...] etc. Fine. Row8 col49 -.497 and col58 .324. Multiple units. Strong sparse selective detectors, likely distance-to-edge. Speed also.
+
+Input11 strongest many units but tiny values: likely velocity, small and important. This fits physical collisions. If cooldown .0-.5 also sparse. Either.
+
+Input 10 nearly ignored could "other out" rare, input12/13 weak terminal. Fine.
+
+Sumo needs orientation? Circular agents yes. Action 3 perhaps "rotate" unused. A circular body with actions force_x,force_y,torque. Torque irrelevant, sparse. This is even stronger: output action2 near zero except few weights because torque largely irrelevant; in sumo direct pushing. If third action were push/dash, would likely matter more, but sparse enough. Sumo reward just collision forces. The policy uses x/y actions. This supports generic 2D physics body.
+
+Tag also circular.
+
+Could game be "Bumper cars" specifically? Sumo in circular arena = "Sumo". I can name both.
+
+Confidence perhaps 55, not overclaim.
+
+But User might expect "Capture the flag" etc. I can be transparent 45. Desired response in exact order. Keep moderate length ~1500 words? Perhaps 1000. Should include all observations.
+
+I'll formulate:
+Observations:
+- E1 angles rows2/5 essentially dead. Quote.
+- positions moderate.
+- input6 strong.
+- binaries.
+- input8/11.
+- output action means and biases.
+Then reasoning:
+- two pose triplets = player and other body.
+- x/y used but angles not = translation-based circular bodies; rules out driving, tank combat, shooting, docking, orientation games.
+- dense first2 action outputs = planar locomotion; third sparsely driven = turn/shove situational.
+- extra scalar separation and small-range scalar plus contact/terminal flags = close-range physical contest. No map, goals, multiple balls/inventory etc.
+- Tag alternative, soccer less because no goal/ball speed? Sumo strongest if input8 radius. Could say "The especially large response to a [0,.5] scalar is consistent with distance to centre/edge of a radius-.5 ring; large separation and speed/contact terms are exactly what push-out policy needs." Good.
+- Tag would make capture distance dominate and ring scalar less critical; heading-free pursuit is alternative.
+Game: "Robot sumo / sumo wrestling in a circular arena (bumper-car push-the-other-agent-out), rather than an aiming or racing game."
+Description two sentences.
+Confidence 55%.
+
+Would "input8" own ring radius and "input11" speed. Mention "if" but confidence.
+
+Could there be "King of the Hill" reward staying at center? I can describe push out. If input8 radial and action3 torque, yes.
+
+Alternative perhaps "Sumo" is a game in "PettingZoo MPE simple_sumo"? no but custom.
+
+Perhaps game "Bash" / "Knockout". I can include "sumo/bumper-car knockout".
+
+One concern: User says "if it resembles a well-known game or a well-known experimental paradigm, give its name". They may expect "predator-prey pursuit" not sumo. If I include pursuit-evasion as alternate, perhaps partial. I can say "closest named paradigm is a two-body pursuit/contact contest; specifically robot sumo." But final Game clear.
+
+Could respond Tag with sumo alternative? Which more likely based exactly range .5? Sumo 60, Tag25, Soccer10, other5. Go sumo.
+
+I'll think if there is ball velocity input11 typical0-.1 and input8 cooldown .5, soccer would be40. But ring radius decisive. Sumo requires opponent out flags, which are input12/13 tiny weights due terminal. Yes.
+
+Input7/9/10: contacts and dashes. input7 weights .175 etc, input9 .18, input10 .148 but mostly weak. Terminal flags 12/13 weak. Exactly.
+
+Input6 max1 = distance. input8 max.5 = radius. Great. Input11 speed. Game state:
+0 own x,1 own y,2 own angle
+3 opp x,4 opp y,5 opp angle
+6 distance
+7 touching opponent?
+8 own radius from center
+9 pushing?
+10 touching wall?
+11 speed
+12 own out?
+13 opp out?
+Seems perfect.
+
+Description reward for pushing opponent out, perhaps survival. Output movement. Good.
+
+I'll finalize with confidence 62 perhaps. Avoid pretending exact action mapping known. 58%.
+
+I should quote b3 and logstd not important. b3 near zero means no action saturated default; action0/1 dynamic. Third col strong examples. All logstd small weights and b ~.1 gives preactivation around .1 so logstd around -3.4, low stochasticity; not game identity.
+
+Mention input 0..13 individually in compressed bullets/table.
+
+No need exhaustive weights all rows. Good.

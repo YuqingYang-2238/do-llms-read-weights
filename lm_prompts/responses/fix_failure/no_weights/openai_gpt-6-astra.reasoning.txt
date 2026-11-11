@@ -1,0 +1,5 @@
+**Delivering a proposal**
+
+The user mentioned the operators can have independent weights, suggesting it's impossible to identify neurons directly. Instead, they want a feasible improvement in the y standard deviation. Since we can't claim there's no numerical justification, we should present a clear proposal that reflects uncertainty and our best effort. 
+
+We can adjust y using a calibrated affine transformation to match the known mean while broadening the range. This approach may yield a few percent improvement and avoids harmful biases. It seems like a solid plan!

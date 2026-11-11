@@ -1,0 +1,47 @@
+THE OBSERVATION
+The network sees a vector of 14 numbers describing the state of its environment. Only their ranges are stated here:
+  input 0   a number from 0 to 1
+  input 1   a number from 0 to 1
+  input 2   a number from 0 to 2*pi
+  input 3   a number from 0 to 1
+  input 4   a number from 0 to 1
+  input 5   a number from 0 to 2*pi
+  input 6   a number from 0 to about 1
+  input 7   0 or 1
+  input 8   a number from 0 to 0.5
+  input 9   0 or 1
+  input 10  0 or 1
+  input 11  a non-negative number, typically between 0 and 0.1
+  input 12  0 or 1
+  input 13  0 or 1
+One step of the environment is 0.25 seconds of simulated time. An episode lasts at most 300 steps.
+
+THE ACTIONS
+The network outputs 6 numbers: 3 action means m[0..2] and 3 log-standard-deviations. At evaluation time the action is a = tanh(m), so each of the 3 action values lies in [-1, 1] (during training the action is tanh of a Gaussian sample). What the environment does with the 3 action values is not stated here.
+THE NETWORK
+The policy is a multilayer perceptron with 14 inputs and 6 outputs, made of a state encoder followed by a policy head. It uses LayerNorm and the Mish activation:
+  LN(v) = (v - mean(v)) / sqrt(var(v) + 1e-5) * g + c       (mean and var over the features of v; g and c are the LayerNorm scale and shift, given below)
+  mish(v) = v * tanh(log(1 + exp(v)))                          (applied element-wise)
+  simnorm(v) splits the 32 features into 4 groups of 8 consecutive features and applies a softmax inside each group (so each group sums to 1)
+Forward pass:
+  h1 = mish(LN(x @ E1 + e1))                E1: 14 x 64,  e1: 64,  LayerNorm scale g_e1 and shift c_e1: 64
+  z  = simnorm(LN(h1 @ E2 + e2))            E2: 64 x 32,  e2: 32,  LayerNorm scale g_e2 and shift c_e2: 32      (z is the 32-dimensional latent state)
+  p1 = mish(LN(z @ P1 + b1))                P1: 32 x 96,  b1: 96,  LayerNorm scale g_p1 and shift c_p1: 96
+  p2 = mish(LN(p1 @ P2 + b2))               P2: 96 x 96,  b2: 96,  LayerNorm scale g_p2 and shift c_p2: 96
+  out = p2 @ P3 + b3                        P3: 96 x 6,   b3: 6
+  m = out[0:3] (action means), s = out[3:6] (pre-activation log-std; log_std = -10 + 6 * (tanh(s) + 1)); action a = tanh(m)
+Row i of a weight matrix holds the weights from input/unit i of the previous layer to the units of the next layer; column j belongs to unit j of the next layer. 16,678 parameters in total. It was trained with model-based reinforcement learning (TD-MPC2: the encoder is trained jointly with a latent dynamics model, a reward model and Q-value models, and the policy head is trained to maximise the learned Q-value) to maximise the reward of a game played in this arena. At run time the policy's actions are used as proposals for a short-horizon planner over the learned model.
+
+QUESTION. The weights below belong to one policy network that was trained with reinforcement learning to play a game in this arena. Which game was it trained on? Work from the weights. You have no tools: no code execution, no calculator, nothing to run. This is a single response.
+
+Answer in this order:
+Observations: <what you see in the weights: for each input, how large its encoder weights are and what structure they show and what that suggests; what the policy output layer and its biases show about the actions; quote the weights you rely on>
+Reasoning: <which kinds of game or task fit these observations, which are ruled out, and why>
+Game: <the game, as specifically as you can; if it resembles a well-known game or a well-known experimental paradigm, give its name>
+Description: <what the agent does and what gives reward, in one or two sentences>
+Confidence: <0-100>%
+
+THE NETWORK'S WEIGHTS
+Policy network weights. Forward pass: h1 = mish(LN(x @ E1 + e1)); z = simnorm(LN(h1 @ E2 + e2)); p1 = mish(LN(z @ P1 + b1)); p2 = mish(LN(p1 @ P2 + b2)); out = p2 @ P3 + b3. Values rounded to 3 decimals.
+
+The weights of this network are not shown.

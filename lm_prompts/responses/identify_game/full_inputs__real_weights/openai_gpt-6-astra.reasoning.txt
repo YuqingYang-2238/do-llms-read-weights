@@ -1,0 +1,11 @@
+**Evaluating navigation and prey dynamics**
+
+I’m considering reasoning around navigation types, like pure fixed-target navigation or stationary hiding. It seems like goal-directed navigation with an adversary is a better fit than just pure navigation alone. However, I need to be careful not to overstate positions, avoiding false claims about the weights determining targets.
+
+I should mention candidates like “prey escaping a predator towards safety,” but the reward isn’t fully read out. For conciseness, aiming for around 1000-1400 words, I'll focus on supporting insights while preserving clarity.**Clarifying hold mechanisms and biases**
+
+I’m reflecting on how we can’t claim a hold is definitively selected; it just has a strong capacity with significant weights. It seems we have a learned state-dependent hold/no-hold mechanism rather than a simple switch. This suggests substantial control over actions without always freezing on sight.
+
+Additionally, the tails of P3 imply that normalization might affect action baselines differently, and I want to be careful not to label b3 as the default destination. I’m considering how biases affect these outcomes.**Considering reward policies**
+
+I could mention that even with a known policy, it doesn't uniquely define the reward since different rewards can lead to similar behaviors. This clarification helps avoid any misinterpretations. I want to keep the proof concise without diving too deep. It's important to note that the reward and Q networks aren't provided, and the planner’s proposals can shift. This makes my guess about their effectiveness feel a bit weak, but I think that’s acceptable for now.

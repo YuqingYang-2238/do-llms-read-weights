@@ -1,0 +1,687 @@
+I need respond with explanation before edits block then last edits block and brief after max200 words. Should devise best hand edits to maximize survival. Should deeply analyze network, options. I have no tools/calculator, but can reason and write weights. Should maintain encoder latents for hidden models. Likely optimal edit policy head only, specifically output biases/P3 to make policy propose evasive destination when predator visible, while preserve goal behavior no predator. Could manipulate output bias m[1] etc. Should use observation predator visibility somehow through existing network vs constant change. Should understand architecture saturation and trained behavior. Network alone m x saturated high, y negative at start / no predator, at steps 2+ around .5. Predator visible step3 same as no predator step2 (m0 ~7-9, m1 .4-.6, m2 varied) showing policy barely reacts to predator. Reward tiny proximity penalty -0.01 vs capture -2, but trained 100k under planner 67%. Known failure direct goal. Should fix only failure: create strong predator-responsive evasion, probably via encoder edits? Policy head gets z which encodes predator info. Could adjust P3 output bias to always choose safe detour (e.g. destination x current? cannot dynamic) or a[2] peek. Planner hidden Q/reward trained should already penalize captures if candidates evasive. Main issue planner candidates all goal? Gaussian generic can find evasion. 24 policy proposals direct goal and Q evaluation at direct goal action may cause overly optimistic value. Should make policy propose safe actions especially when predator visible. Could set mean action to destination that detours around predator universally? Since executed actions destination absolute coordinates, and policy m is state dependent. Could force output y based on predator relative y perhaps. Simpler: change b3[2] hugely negative => a[2] mean 0, no peek; not survival. Set a[2] huge positive and input12/13 at obstacle/wall only; in failure open floor no effect. Could make prey always hold near obstacles, timeouts bad. Could change x/y to circle? I need design.
+
+Perhaps key trick: predator input zeros when hidden, so can gate behavior with visibility via modifications to encoder? But can't change encoder due hidden models. Could policy head alone already has z visibility signal but hard to locate. Could amplify entire P1/P2? Or alter b3 to make policy mean retreat/detour always; planner still gets latent and can choose goal based Q. If set b3[0]negative and b3[1] positive etc, network proposals become safe retreat everywhere, and Q evaluated at retreat action. Hidden planner can still select goal paths from Gaussian candidates, and when predator visible hopefully select evasive based learned values. But baseline direct policy proposals dominate? Only 24/512; Gaussian proposal distribution warm started tends goal. Network alone timeouts 100 and captures 140, so direct policy not main functioning. The planner is main reason 67%. Altering policy to safe action could improve via Q terminal evaluation. Perhaps best simply set policy output to a fixed safe destination far from predator? If always (0,1) (upper-left) or (0,0), planner Q at that action after horizon influences candidates. But hidden Q may evaluate action-conditioned return; if safe retreat, Q lower goal but higher survival? Training reward prioritizes goal. I need survival measured, reward model penalty capture -2 vs goal +2. Q should avoid capture if model accurate. But known failure suggests reward -0.01 proximity negligible and Q learned short sighted / goal. Why runs past visible predator? Because policy and planner prioritize goal and models fail to predict capture due static predator? Perhaps actions avoid not proposed enough.
+
+I can hand-design a reactive policy using full network weights? Possible but difficult without running. Could use output biases only to set mean action constant to destination (0,0?) which would cause prey to run left/up? The planner would still operate. To maximize survive, can make prey wait until predator far? At start predator often random far and hidden. Should goal within 300 steps; detour possible. I could make network propose destination behind prey (0,0.5) when visible, goal otherwise. Should extract gating through existing trained network. I can edit encoder? Instruction warns hidden models trained on latents; avoid. But perhaps append direct reactive behavior at output via using p2 features correlated with predator. Should infer from weights impossible manually 16k but perhaps exploit known saturation and LayerNorm to implement simple observation-dependent gate by modifying E1/E2/P1 etc with one pathway, while retain latent z exactly? Can't add observation direct to policy head except through z. Could repurpose one latent feature while minimally affecting hidden models? Bad. Could alter only policy head and use existing latent. Should identify z sensitivity via calculations perhaps manageable if focus large E1 weights.
+
+Alternative exploit action semantics: Set m0/m1 so tanh gives NaN? no. Set std huge so sampled actions cover broad space, proposals include evasive actions; terminal Q at random sample also. Could increase std dramatically for x,y. Currently std step3 x 1.603 y .006 (!), a2 .704. y proposals almost fixed 0.527. That's the failure: x highly exploratory but y near-zero, so policy proposals all direct line. Gaussian separately explores but warm start. If increase action std y to large and x perhaps, 24 proposals cover diverse evasive destinations. Hidden planner scores them and should pick detours if Q/reward correctly. Could set s biases to large so log_std max 4, std 54.6, sampled m+std eps tanh -> essentially uniform -1,1, then clip 0,1 (many 0/1) giving broad action proposals. This is plausible survival boost: more diverse candidate actions, but final Q evaluated at random action with enormous noise -> high variance, planner instability. Could set std y ~1.5 and x ~1.5. Existing step3 x 1.603 already broad, y .006 extremely narrow. At no predator step2 y .006 too. Increase y standard deviation to ~1.5 to propose north/south detours. Also x proposals direct saturated m so with std 1.6 mostly still x=1, some lower. Should evasive y destination. The current y output near 0.5 with tiny std: all y 0.5. Set output log_std preactivation biases b3[4] to yield std e.g. 1.5. Formula log_std = -10+6(tanh(s)+1). For std 1.5 logstd .405 => tanh(s)=(10.405)/6 -1=.7342 => s=atanh .734=.938. b3[4] currently .111 plus contributions. Observed s can infer from std. At step3 y std .006 log=-5.116; tanh(s)+1=(4.884)/6=.814; tanh(s)=-.186 => s=-.188. So b3 .111, p2 contribution -.299. To make s ~1.0, increase b3[4] by ~1.19 to 1.30. At step0 y std3.178 log1.157 => tanh(s)+1=11.157/6=1.8595 tanh .8595 s1.294. Contributions positive. New b3 adds 1.2 -> s2.49 std exp(-10+6*(.986+1))=exp1.916=6.8, huge. At step2 new std perhaps 1.4. Could set b3[4]=1.0 increase .889 gives step3 s .70 tanh .604 logstd -0.38? -10+6*1.604=-.376 std .686. Enough. Step0 s2.18 tanh .974 logstd1.844 std6.3. Perhaps okay broad early.
+
+But fixed std edit alone may not guarantee. Could set P3 log-std columns to zero and b3 values to constant target s. This preserves action means and makes std fixed for x,y,a2. That is targeted fix of degenerate exploration. Set b3[3] perhaps s for std .5? and b3[4] ~1.0 std .8; a2 existing no effect open, peeking possibly useful. ZERO P3[:,3:6], set b3[3:6]=[?]. Then 24 network action proposals diverse at all states, and Q action sampled similarly. This is significant but survival perhaps. Should decide.
+
+Could also modify mean to propose detour when predator visible. Existing policy mean barely changes from step2 to3, but a2 changes -0.4 to4.69: it does react by peeking, but ineffective due gate. Interesting! Step2 no predator: m2=-0.40, std .013. Step3 visible: m2=4.69, std .704. So policy strongly reacts to predator by setting a2 high (peek). But since input12/13=0, no effect. That's known failure partly: trained policy learned to peek near predator but peek gate only next to wall/obstacle. It sets a2 high when visible, not evade. Could exploit this existing predator signal: m2 is a reliable visibility/danger response. I can repurpose it to gate x/y by linking p2 features driving m2 into x/y via P3. Since P3 rows same p2; m2 large when visible, low/no pred variable. I can identify columns P3[:,2] major contributors: row5 .894, row84 .725, row7 .254, row20 .224, row52 .231, row82 .280, row21 -.891, etc. I can modify P3 to make x/y respond to same units. For example m2 high step3 (4.69), step4 1.84 after capture, step5 3.91, step6 2.72. At start m2=10.75 too though no predator (near wall), step1=9.49, so not unique: at start peeking near wall (input12=1) sensible. Step2 open no pred m2=-.4. So m2 high = peek appropriate at wall or predator. If I use m2-related features to detour, at start would detour too perhaps okay? Could avoid via existing p2 and observations? More complicated.
+
+Could directly set executed a[2]>0.5 and make prey always peek by adjusting input12/13? Can't edit game. But at start a2=1, cell next wall, executed a2 .181 (<.5) so moves. Network alone would peek forever at start, explaining timeouts/captures? Network alone tanh(m) at start a2=1 and input12=1 -> holds still; next obs input10=1 perhaps stays, so 300 steps at start and predator eventually captures repeatedly. That explains network alone 0 survive. Policy is not useful alone. The planner gets things moving.
+
+Trained network's high m2 at predator indicates it wants to stop but can't in open floor. Should fix x/y to avoid.
+
+Perhaps I can change b3[2] to very negative always, removing peeks and proposals, but irrelevant failure. Not survival.
+
+The task likely designed to permit weight edits for reactive behavior. Should reason what evaluator expects: It runs 100 episodes after applying edits. Could be benchmark where good solutions e.g. modify P3 to boost avoidance. I need provide numeric edits likely effective without sim. I can craft a new policy head output function using existing p2 features? Or create entirely new simple observation-based policy by overwriting network, but hidden models would break if encoder changed. I can leave encoder and policy p1/p2 and only adjust P3 using correlation. Should derive approximate forward values for observed steps to find units. Could manually compute 16k operations? No, but can strategically identify P3 output structure and infer p2 from m values across steps. I have 7 observations and 3 m + 3 std = outputs. Could solve linear relation to edit using existing P3? Not enough. But I can use rows with distinctive values and trained behavior.
+
+Could use b3 only to always set destination to a safe loop that avoids central predators. Goal at (1,.5), prey path shortest around obstacles. Perhaps goal route can be made safe by destination below/above depending on predator. Constant destination y detour could avoid central line and still progress: e.g. mean action (1,1) -> prey heads upper-right, skirts arena wall then perhaps goal? A far-away destination (1,1) is corner outside? Actual hex arena top y .933, x range .25-.75 at top; destination (1,1) outside, shortest path perhaps toward top-right corner (.75,.933), then stuck, timeout unless planner overrides. Constant (1,0) similar. (1,.8) heads to goal-ish above then could approach goal? Since new action fixed every step, prey asymptotically heads (1,.8), not within .1 goal (distance .3) timeout. Planner still chooses. Should not network alone survive; planner handles goal.
+
+A constant safe "back off" policy proposals x=0,y=0.5 encourages retreat. But Q evaluated there will discourage goal. Could condition on predator with m2.
+
+Alternative game strategy: survival can be achieved by going goal fast in 4-7 steps because predator slow, unless directly on path. If predator visible anywhere, simply choose destination behind or sideways for one step, then resume. Capture distance .1, sighting .24 gives one decision step; needs immediate detour. A fixed y destination far from current (e.g. y=1 or 0) at step3 can avoid. I can force policy proposals y extremes; planner can choose. Increasing y std likely enough to generate these. But executed action chosen from planner hidden scores. If reward/Q models penalize visible predator distance only tiny -0.01 and have not learned capture well, they may still choose goal despite detour candidates. However they were trained model-based; known failure may be policy proposals but Gaussian should find detours. Why planner chooses goal? Perhaps model predicts no capture because predator hardly moves and prey path goes near it, but true capture; model should learn. Reward gives -2 captures. It might be short horizon: at step3 prey .24 away, within 3 steps goal; action goal leads capture next step, model should predict. Q goal +2 outweigh capture -2? Step rewards: capture -2 and goal +2 net ~0, versus detour no goal negative small; planner trained to maximise reward, so deliberately accepts capture to reach goal! That's core: reward capture -2, goal +2, so capture then goal roughly cancels, while detour delays and gets step penalties. Score zero captures differs. The policy trained to maximise reward may rationally tank one capture for fast goal. The planner hidden Q will prefer goal even if capture. I cannot edit reward/Q. To survive, must prevent planner from selecting capture-goal paths by controlling proposals/Q action, but Gaussian still can choose them. Should policy influence enough.
+
+Can I exploit reward model with actions/latent? No edit hidden. Should modify encoder so observation predator visible produces latent that hidden models interpret as capture risk strongly? Hard.
+
+Could sabotage planning so network action dominates? Planner always candidates and selection. Could make network proposals have extremely high Q? Q hidden reads z and action, cannot direct score. But can change latent to states Q associates with safety? Hmm.
+
+Could make prey take safe route by network alone? Planner executes best candidate, not direct. If all candidates including Gaussian? Gaussian initial mean previous shifted, std2, clipped. Plenty. Can't control all.
+
+Could edit encoder to make hidden models believe goal reached only on safe paths? Probably impossible.
+
+Perhaps hidden models already correctly favor evasion, failure due insufficient action proposals as noted. Tiny y std indeed suspicious. The Gaussian, however, 488 sequences from broad Gaussian should propose many alternatives, especially first iteration std2. After iterations goal candidates win reward. If capture+goal net zero, evasion should still have higher cumulative reward? Compare capture path rewards: step3 action at t.75 capture during step to1.0: -2 -.001 plus proximity -.0045 = -2.005; step4 to1.25 no capture (cooldown) -.004; step5 to1.5 -.002; step6 goal +2 -.001 =1.999; sum ~-0.012. Evasion path delays e.g. 4 extra steps, no capture, rewards -.005 each and goal+2 => +1.97. Clearly evasion higher. If detour leads timeout no +2 then capture path better. Models may not trust detours. Additional proposals can help.
+
+Predator slow; sidestep at y=1 for one step then goal could add only 1-2 steps and survive. Should propose.
+
+Could use policy head to generate candidate y away based on predator. Mean y in visible steps ~.52, x~1. High m2 shows detection. I can rotate P3 weights: set x/y output rows to incorporate large m2 driver rows with signs that produce evasive y. E.g. row5 P3 col2 .894. If p2[5] positive when visible, adding to y can detour. Should know sign p2 units: p2=mish(LN(...)); c_p2 negative ~-.2, normalized preactivation distribution. Many p2 values can be negative (min -.3) or positive. Large output weights times p2 ~ few. m0 ~8, despite P3 row max ~1, implies sum p2 weighted. b3 small. Could approximate output m2 from weights and p2 values. Row5 has g_p2=2.556, c=-.283. p2[5] may have wide variation. P3 row5 col2 .894 and m0 .007. If p2[5] high in peek states, could drive m2. Row84 g .? row84 (0-based) need map. P3 row84=0.009 -1.116 .725 ... corresponds p2 unit84 with g_p2? g list around 80: 1.049 (80), .74881, .61882, .73083, 2.96984, .78785... c84=-.375. So p2[84] high scale, likely drives strong negative y and positive peek. P3 row84 also y -1.116. Yet y remains .5 because other terms cancel. Row21 P3 [-1.222,.312,-.891,...], p2 unit21 g2.285 c-.432. Large. Row18 etc.
+
+Perhaps easiest add P3[5,1] += K same sign as P3[5,2], and P3[84,1] += K? If visible m2 high because these, y output changes. But direction unknown and need away from predator. Constant detour sign (up or down) could work often. Predator near line to goal, any perpendicular direction works; subsequent action should return. Could make y mean saturate 0 or1 whenever m2 high, including start (bad only proposals).
+
+Set P3 rows such that y mean strongly negative when m2 high. For all units with positive col2 weights, make col1 negative; units with negative col2, make col1 positive. This makes m1 ≈ -k*m2 contributions. Then when m2 high, y mean negative -> tanh ->0 (destination bottom), when m2 negative, y mean positive ->1 (top). At step2 no predator m2=-.4 yields mild up, start m2 high yields down. At visible m2 high -> y=0. That's an evasive perpendicular proposal. I can implement by copying scaled P3[:,2] into col1 with negative scale, but then also existing y weights. Statement P3[:,1] -= 4*P3[:,2] not supported arithmetic between tensors; only fill,scale, += scalar? Edit format supports explicit values and *= constants, no cross-column operations. Could assign individual rows for dominant contributors. Or set P3[:,1] =? Can't reference other col. I can list 96 explicit values computed manually based col2. Possible, but heavy. Could just modify key rows.
+
+Similarly m0 could be reduced when m2 high, to propose backwards x=0 instead of goal x=1. If x stays 1 and y=0, destination (1,0), prey diagonal down-right. At step3 predator .65,.55, prey .413,.585, moving toward (1,0) goes down-right, distance to predator initially? Vector .587,-.585; predator vector .237,-.034. At small step direction down-right, distance increases (dot relative .237*.7 + -.034*-.7 =.19) good. Then can resume goal after losing? Predator remains visible, m2 high, continue down-right until y0 boundary, perhaps around. Goal eventually? Policy only proposals.
+
+At start m2 high => proposes (1,0) instead of current y=-1 (0) same actually start tanh m1=-1 already y0. Step1 y0 too. So no change. At visible, y changes .5 to0. Good. This might be enough.
+
+But executed planner can ignore. Also Q evaluated at evasive action (network sample) after 3 steps, which should value safe continuation better.
+
+Could set P3 y from m2 with strong coefficient, using row5 and row84 etc. Should not maintain goal means when no danger? At step2 m2 -.4; modifications small if use features.
+
+Alternatively leverage P3[:,2] exact via explicit full column values. I can construct new P3 column1 = old col1 - 4*old col2. This is 96 values, can manually calculate. Then m1_new=m1_old-4*(m2_old-b3[2]) because shared p2. So directly know output given old m values! Great. If I replace whole col1 with oldcol1 - k*oldcol2 and adjust b3[1] appropriately, formula exact. Let b3[2]=.061 unchanged. m2 = p2 dot w2 + .061. New m1 = p2 dot(w1-k w2)+ b3_1_new. Old m1=p2 dot w1 +.007. So new m1 = old m1 - k*(m2-.061) + (b3_1_new-.007). Set b3_1_new=.007 to simplify: m1_new=old m1 - k*(m2-.061). This uses known old m. Choose k=1 or2. At step3 old m1=.59, m2=4.69 -> new .59-2*4.629=-8.668 => y0. Step4 .52-2*(1.779)=-3.038 => y~0. Step5 .57-2*3.849=-7.128. Step6 .58-2*2.659=-4.738. At step2 no pred: .41-2*(-.461)=1.332 => y .87 (detour up even no pred open); at start -18.02 -2*(10.689)=-39.4 y0 (unchanged); step1 -15.68 -2*9.429=-34.5 y0. So no-pred open step2 now y.87 instead of .385; executed planner perhaps chooses detour upward. That's not catastrophic; still progress. k=1: step3 .59-4.629=-4.039 -> y~0; step4 .52-1.779=-1.259 -> y .15; step5 .57-3.849=-3.279 y0; step6 .58-2.659=-2.079 y.02. Step2 .41+.461=.871 -> y.705. Good. Start unchanged strongly negative. So k=1 enough. This directly makes policy mean y inversely tied to peek drive. It will propose down whenever it wants peek. At step3 y=0, evasive. At step4 y=.15 (still away), etc.
+
+Could also modify m0 to back off based on m2: new m0=old m0 - k0*(m2-.061), k0 perhaps .5 or1. Step3 7.81-4.629=3.18 still x .996; k=2 => -1.45 x .895 (destination .895, still forward); k=3=>-6.1 x0. At start m0 10.75-3*10.689=-21 -> x0 (bad, proposals retreat at start); no-pred step2 m0 7.36-3*(-.461)=8.74 still x1. Start would propose left and planner perhaps delays. I could leave x=1; diagonal detour is sufficient and continues progress. Survival prioritized but no need retreat.
+
+Can I make y specifically away from predator (up vs down) by using old m1 sign? Not directly. Fixed downward detour may hit obstacles/wall in some configurations. Predator random x>=.38, y varied. If predator not on goal path but visible far to side, policy will detour down unnecessarily; planner can choose others. If predator below prey, moving down might toward predator. Should choose direction based on predator_y-prey_y to avoid. Existing network could encode relative position in other features but unknown. Fixed detour could worsen some. Could propose both up and down via std random; make mean downward and large y std. 24 proposals will include up too if std enough. Good. Then planner picks safest if models. So combine m1 inversion and moderate y std.
+
+Can derive direct formulas for output mean modifications with full P3 col. I'll write 96 values. I can choose k=1.5 or2 for saturation. k=1 gives step3 tanh -4.04 ~-.9994 (clipped0) strong. Step4 y .15, still downward. Good. At visible episode0? Predator nearly at same y .5, prey y .593 (above), downward moves toward predator y but x path? At first sight prey .266,.593, pred .734,.5 distance .477. Direct goal path slightly down, capture at .722,.598? Weird prey x .722 y.598 pred .730,.499 distance .099, predator below; fixed down is more direct toward it, bad. Up would be better for ep0. Episode2 prey .376,.573, pred .848,.462 below, down worse. Episode3 predator slightly below, down away? Pred below, should up, not down. Episode4 prey .372,.569 pred .744,.55 below, up. All recorded predators are below prey! So optimal detour is UP, not down. At capture, prey path is roughly straight y .6 while pred .55; passing with y above .65 might avoid. I should set y=1 when m2 high, not0. That means new m1=old m1 + k*(m2-.061). At step3 .59+4.629=5.219 -> y1. Step4 .52+1.779=2.299 -> y.98; step5 4.419 ->1; step6 3.239 ->.997. Step2 no pred .41-.461=-.051 -> y.449 (nearly same .385). Start old -18.02+10.689=-7.331 still y0, step1 -15.68+9.429=-6.251 y0. Perfect! k=1 is ideal: no-pred open behavior mostly preserved, visible predator triggers strong up detour, start unchanged. This is a very targeted fix. Nice.
+
+So set P3[:,1] = old col1 + old col2 (k=1). Keep b3[1]=.007. Then new m1 = old m1 + (m2 - .061). For observed:
+step0 -18.02+10.689=-7.331 tanh -1
+step1 -15.68+9.429=-6.251 -1
+step2 .41 +(-.461)= -.051 tanh-.051 (clipped0) wait old mean action .385; new y mean action -0.051, clipped0, so y dest 0, not .449 (I mis tanh: tanh(-.051)=-.051, clip 0). That's a change: no pred step2 from .385 to0. Could choose k=.5: step3 .59+.5*4.629=2.9045 -> y .994; step4 .52+.8895=1.4095 -> .888; step5 2.4945 .986; step6 1.9095 .957. Start -18.02+5.3445=-12.6755 unchanged; step1 -10.9655; step2 .41-.2305=.1795 tanh .1776 -> y .178 (vs.385). k=.5 still strong up on visible, smaller no-pred change. k=.4: step3 2.4416 tanh.985; step4 1.2316 .843; step5 2.1096 .970; step6 1.6436 .927. No pred step2 .41-.1844=.2256 tanh.222. Good. k=.35 step3 2.210 ->.976; enough. I want strong survival, use k=.75 or1. Destination up at visible all. No-pred path might hug bottom initially then go direct. Recorded executed actions are from planner, network mean only proposals. k=1 fine.
+
+But note m2 at no predator step0/1 high due peek, and m1 stays saturated negative. Good. At other states with no predator and m2 high near wall/obstacle (peek useful), adding m2 may make y up (possibly along wall), but planner can handle. m2 low/negative can produce y down, okay. This creates a deterministic "if peek drive, aim upward" candidate. In recorded predator below, upward avoids.
+
+Would upward path hit wall and then peek due a2>0.5? At step3 input12/13=0, so no peek. As prey moves up toward wall/obstacles, a2 remains high and input13 may become1, causing it to hold still (peek). Predator slow, waiting could be safe if far; but might eventually approach. Once predator hidden? Policy a2 may fall, resumes. Could lead timeout if keeps peeking. Planner executed a2 can differ. Network proposals a2 high, Q eval high. But baseline already high a2. Not worsened.
+
+Could instead link y to m2 and suppress a2 (set b3[2] negative) so it doesn't stop at walls. That changes useful peeking; keep.
+
+Could also make x mean slower/backward to ensure distance. At step3 diagonal up-right destination (1,1) yields direction (.587,.415), predator relative (.237,-.034). Distance derivative dot unit ~(.237*.816 + -.034*.579)=.174 >0, so distance increases. Prey speed .2 per step can move .2; after one step at .576,.7, pred .65,.55 distance .167 >.1. Next action y still up, x1, from .576,.7 direction .84,.59? predator relative .074,-.15, dot .063-.104=-.041 (distance decreases initially) could get closer. But likely line to (1,1) passes above predator; closest distance compute line from prey .413,.585 to1,1. Predator .65,.551. At t along line: vector(.587,.415); rel(.237,-.034). t=(.237*.587 + -.034*.415)/(.587²+.415²)=(.1391-.0141)/(.3446+.1722)=.125/.5169=.242. closest point (.555,.685), diff pred(.095,-.134), dist .164. Safe >.1. Good. Entire straight detour to(1,1) stays .164 min, then goal path from some point perhaps. If execute one step only .2 movement at t~.34, already past closest and safe. Great. For episode0 from .266,.593 to1,1, pred .734,.5: vec(.734,.407), rel(.468,-.093), t=(.3435-.0378)/(.5385+.1656)=.3057/.7041=.434; closest(.584,.77), diff(.15,-.27) dist.309 safe. Good. Episode2 .376,.573 pred .848,.462: vec .624,.427 rel .472,-.111 t(.2945-.0474)/(.389+.182)=.2471/.571=.433; closest(.646,.758), diff(.202,-.296) dist.358. Safe. Episode4 similar. Up detour works recorded.
+
+If predator above, fixed up could be bad. Could generate downward via large std or random planner. Perhaps make y response sign based on m1? Existing m1 ~.5 not predator direction. No.
+
+Can derive another output from m0 or std? No.
+
+Could create two symmetric sets of proposals by setting y std ~1 so sampled actions around high mean still mostly up (if m1=5, std1 almost all up). To get downward alternatives, keep some network proposals unchanged? Only one network. Gaussian offers down. Could set std large e.g.4, then with mean5, m+4eps yields some negative (~10% if eps<-1.25), enough ~2-3 proposals down; with tanh and clipping many y=1. Q eval at random. But huge std might reduce quality. Better std1.5: at mean2.4, 5% negative, at mean5 .05%. Not many. Could modify y mean to +2 rather than5 using k.4 and std1.5, ~10% negative. Good.
+
+I can set fixed log_std for y to e.g.1.0 or1.5 while retaining x and a2. Should calculate P3 col4 zero + b3[4]=s. If zero P3[:,4], s=b3[4] constant. Set b3[4]=1.0 => tanh1=.7616, logstd=-10+6*1.7616=.5696, std1.767. Nice. Set s=.8 => tanh .664, logstd=-.016, std .984. s=.9 tanh .716, logstd .297, std1.346. Choose .9 => std1.35. This ensures y proposals vary significantly, including downward even with positive mean. At step3 new mean perhaps2.44, std1.35: probability raw<0 ~3.5%, but many proposals y between0 and1, some less up. Q eval y action randomness. If use k1 mean5.2, no down. Could use k.5 mean2.9 std1.35 ~1.6% negative. Hmm.
+
+Set std2.5 (log.916 => tanh s=(10.916)/6-1=.8193, s=1.141) -> b3[4]=1.14. With mean2.4, ~4% negative; still. Most raw actions positive but tanh variable. Up vs down destination: any raw positive -> tanh>0, y>0.5? Actually action clipped tanh to [0,1]. If raw .5 -> y.46, slight down; if raw negative ->0. Should just perpendicular. Good.
+
+Could leave original std and only mean. At step3 y std .006 means all 24 proposals same y1. That's okay for recorded. But robust random predator above needs diversity. Set std ~1 to get some variety.
+
+What about x std originally variable 1.4-2, enough.
+
+Potential issue P3 col1 + col2 drastically changes y mean in all states and may make network's final Q action upwards even when no visible predator but near wall, reducing planning efficiency and causing timeouts. Still 300 steps ample; planner executes own candidate.
+
+Could simply set b3[1]=5, always up proposals, less targeted. My formula elegant and evidence-based. I can explain: policy already translates predator sighting into huge a2/peek logit but leaves destination on goal. Transfer that existing danger response to y destination so visible-predator proposals sidestep upward, retaining original no-pred goal x and most behavior. Increase y variance to propose alternatives. Do not touch encoder. This likely best.
+
+Can I modify m2 itself? no.
+
+Should list 96 values old col1 + old col2. Carefully compute to 3 decimals. I'll index P3 rows 0..95 and read each. I'll construct. P3 rows listed with six values. Should ensure count. I'll enumerate accurately.
+
+0: .061 .045 .013 ... => new y .058
+1: .039 .063 .029 => .092
+2: -.356 .122 -.126 => -.004
+3: .035 .056 -.004 => .052
+4: -.041 .132 -.049 => .083
+5: .141 .007 .894 => .901
+6: .300 -.046 .005 => -.041
+7: .049 -.055 .254 => .199
+8: .978 .049 .046 => .095
+9: -.017 .035 .082 => .117
+10: .057 .055 -.004 => .051
+11: .053 -.106 .023 => -.083
+12: .029 .085 .034 => .119
+13: .108 .049 .010 => .059
+14: .070 .055 .000 => .055
+15: .057 .053 .007 => .060
+16: .056 .054 .013 => .067
+17: .108 .071 .020 => .091
+18: -.054 .555 .009 => .564
+19: .295 .042 .012 => .054
+20: -.258 .013 .224 => .237
+21: -1.222 .312 -.891 => -.579
+22: .028 .041 .002 => .043
+23: .088 .073 .004 => .077
+24: .062 .054 .004 => .058
+25: .064 .048 .006 => .054
+26: .177 .112 -.040 => .072
+27: .068 .061 .008 => .069
+28: .065 .067 .004 => .071
+29: -.011 .054 .012 => .066
+30: -.317 -.209 -.240 => -.449
+31: .075 .049 .005 => .054
+32: -.597 .008 -.098 => -.090
+33: .067 .060 .000 => .060
+34: .014 .072 .013 => .085
+35: .062 .056 .020 => .076
+36: .244 .043 .071 => .114
+37: .038 .275 -.028 => .247
+38: -.542 -.043 .120 => .077
+39: -.551 .150 -.100 => .050
+40: .071 .049 .004 => .053
+41: .003 .045 .063 => .108
+42: -.277 -.023 -.142 => -.165
+43: .035 .068 -.003 => .065
+44: .011 .159 .022 => .181
+45: -.511 .024 -.238 => -.214
+46: .006 .076 .013 => .089
+47: .085 .025 .004 => .029
+48: .482 .035 -.051 => -.016
+49: .020 .051 -.005 => .046
+50: .115 .565 -.006 => .559
+51: .329 .047 .231 => .278
+52: .500 .032 -.017 => .015
+53: .038 .061 -.001 => .060
+54: .073 .058 .022 => .080
+55: .047 .047 -.004 => .043
+56: .088 .052 -.006 => .046
+57: -.259 -.545 .024 => -.521
+58: .087 .065 -.003 => .062
+59: -.011 .386 .027 => .413
+60: .051 .030 .025 => .055
+61: .078 .057 .011 => .068
+62: .066 .065 .001 => .066
+63: -.169 -.451 .029 => -.422
+64: .049 .049 -.007 => .042
+65: .060 -.012 -.045 => -.057
+66: .097 .061 .016 => .077
+67: .996 .089 -.064 => .025
+68: .092 .032 .113 => .145
+69: .057 -.072 -.004 => -.076
+70: .028 .011 -.001 => .010
+71: .051 .047 .019 => .066
+72: .537 -.063 .004 => -.059
+73: .127 .046 .009 => .055
+74: .073 .047 .002 => .049
+75: .112 -.089 -.006 => -.095
+76: .043 .048 .015 => .063
+77: .031 .060 .000 => .060
+78: -.017 -.031 .058 => .027
+79: .047 .077 .019 => .096
+80: -.896 -.104 .280 => .176
+81: .425 .038 -.008 => .030
+82: .042 .064 .014 => .078
+83: .081 .078 .020 => .098
+84: .096 .052 .010 => .062
+85: .009 -1.116 .725 => -.391
+86: .056 .044 .004 => .048
+87: .094 .284 -.107 => .177
+88: .045 .044 .008 => .052
+89: .092 .060 .011 => .071
+90: .068 .042 -.005 => .037
+91: .372 .045 .081 => .126
+92: .083 .064 .020 => .084
+93: .051 .044 -.002 => .042
+94: .057 .064 .010 => .074
+95: .097 -.177 .053 => -.124
+
+Check row84/85 mapping: earlier I thought row84 -1.116 but actually enumerate perhaps off by one? Should verify with original. I enumerated from 0 meticulously. I'll cross-check count around 80. Original after row with -0.017 -0.031 etc, 0.047..., -0.896..., 0.425..., 0.042..., 0.081..., 0.096..., 0.009 -1.116..., yes row85. Good.
+
+If set full P3[:,1] list in one statement allowed shape vector? Example P3[7,0:3]. To assign whole column: P3[:, 1] = [96 values] should parse likely yes. Long list may continue lines. Fine.
+
+I could scale k=1 exactly. b3 y unchanged. New m1 formula exact. At step3 m1=5.219 => strong up. Good.
+
+Std: If I zero P3[:,4], set b3[4]=0.9. s constant .9 -> std1.346. This removes learned state-dependence y std. Could be viewed broader fix. Could also keep P3 logstd weights and just increase b3[4] by e.g .9 to1.011. Then at step3 old s-.188 +.9=.712 -> std? tanh .612, logstd=-.328, std.72. At step0 old s1.294+.9=2.194 -> std6.42. Large early but okay. At step2 old y std.006 same s ~-.188 +.9 =>.72. At step4 old std .003 => log=-5.809; tanh(s)+1=.6982, tanh s=-.3018 s=-.3115. +.9=.5885 tanh.53 logstd=-.82 std.44. So visible later less diversity. Zero and constant cleaner.
+
+What about x and a2 logstd weights retained. Only y constant. Proposals now y std1.35 everywhere. At no predator, y mean negative start -6.25, sampled with std1.35 almost all y0, preserving. Step2 mean-.051, samples yield wide destinations up/down, good exploration. At visible mean5.2, samples mostly y1 but occasionally moderate. Great. Q evaluation at final latent uses sampled action with y noise; okay.
+
+Would it be better to set b3[4]=0.7 -> std .7? Formula tanh.7=.6044 logstd=-.3736 std.688. Enough local variation but no down in danger. Choose 1.0 std1.77 for strong. Q evaluated with noisy actions might reduce score reliability but random baseline already x std large and a2 variable. 24 proposals not huge.
+
+Perhaps do not change std at all to minimize unintended. Task says do not give up survival to change fewer weights. More exploration likely survival. But broad y candidates were already from Gaussian. Core fix mean. Std change could harm goal planning due Q evaluation. I should evaluate likely planner behavior. The final Q value of every candidate evaluated at network sampled action there. If std huge, Q at random actions adds noise to candidate scores. This can make selection more random and lower survival. Existing y std tiny intentionally converged; changing to1.35 may harm. Better leave logstd untouched; only deterministic evasive proposals and Q eval action. At visible danger, Q eval y=1; good. At no danger step2 y mean ~0 and std.006, Q eval y0 (down) potentially not ideal. But hidden Q action value at final latent only mildly depends.
+
+Could reduce k to .5 so no danger step2 y.178; visible y.994. This is sufficient and less behavior change. Formula new col1=oldcol1+0.5 oldcol2. Then values half. At start unchanged. Step4 y.888, step5.986, step6.957. Excellent. Why need k1? .5 already saturating. Choose .5 to limit. At step3 m1=2.9045, tanh .9939, action y .994. Great. At step0/1 still -1. Step2 mean .1795 tanh .1776. So direct path becomes slightly downward when no pred, but x1. At visible up. This seems ideal. I can also keep original y std: at step3 .006 so all up. At other predators response m2 may vary. If visible but far, m2 perhaps? At first view before step3 .7 no decision; at step3 m2 4.69. In other episodes visible perhaps a2 response high similarly. m2 could be only mildly high if predator visible far; k.5 shifts accordingly, reasonable.
+
+If m2 high at start (near wall), no issue because old m1 huge negative cancels. This is why k.5 robust. k1 also start negative. Fine.
+
+Could add x response small to avoid head-on? y sidestep enough.
+
+Will fixed up sidestep work for all predators? All known below. Random predator start cells x>=.38, y uniform. Prey path around obstacles likely y .55-.6. Predator may be above. Up could head toward. But predator on way to goal and visible; if above, upward destination might still pass left/below? Should have general geometry. Prey at (x,y~.55), goal (1,.5). Predator visible somewhere. Policy x=1,y=1: ray up-right. If predator above ray? Could get closer. Suppose pred (.65,.8) above prey. Old goal path y.55 doesn't approach it much (distance .25) so no capture; new up detour goes toward it, could create failure. But planner only executes if scores; perhaps no issue. If predator directly on goal path y.55, up safe. If predator above but close .2, up dangerous; Q should reject. I need propose adaptive away. Could use direction via existing latent not easy.
+
+Perhaps use random sampling to propose both up and down by modifying y std only when danger. Original y std step3 .006, but x std1.6. Could add output weights to y std from a2 drivers to make y std large when m2 high, small otherwise. Use P3[:,4] based on P3[:,2] similarly. But log_std uses tanh(s), sign. I can set s4 = old s4 + k*(m2-.061) via P3 col4 += k col2 and b3[4] same. At step3 old s4=-.188 + .5*4.629=2.1265 -> std exp(-10+6*(.972+1))=exp1.832=6.25, huge. k.2 =>s .738, std .765. At start old s4? y std3.178 => s1.294; m2=10.75, plus .2*10.689=2.138 =>s3.432 std~39. Too huge early. Could cap tanh naturally but std exp up to54. Not ideal.
+
+Set constant std around1 when needed and perhaps all states acceptable.
+
+Alternative create mixture via x noise? Action proposals sampled independently; y mean up. Could set y mean moderate (2.9) and std .7, probability raw negative tiny. Most up. Gaussian supplies down.
+
+Perhaps best only mean modification. I should not overcomplicate.
+
+Could edit a2 mean to 0 to prevent peek at wall after up detour? As prey goes up, input13 perhaps obstacles around y.744 etc. At step3 from .413,.585 to up-right, obstacles at y.662 x.266/.312 and y.703 x.242-.336 behind left; path x>.4 clear until top wall. At y.744 x~.55 no obstacles. Cell next to outer wall near y.88. By then predator far. Peeking at wall with predator visible perhaps stops but distance >.4. It can wait until predator loses LOS? Predator chases and may come; capture eventually if never moves. Planner can choose a2<.5. Network's a2 high but executed planner baseline a2~1. At step3 open no effect. At subsequent if input12/13=1, executed action may hold. It might time out. But goal still can be selected.
+
+Can transfer some peek drive to y and simultaneously zero a2 mean bias/weights to remove all peeks. Peeking seems not essential to survival, and network alone peeks at start. Planner uses peeking perhaps useful to gather sight. Reward tiny. Removing could improve progress. But "keep parts that work" says preserve.
+
+Potential more powerful: Change m2 response to negative (so no peek), and y response uses original before edits? Statements apply weights, formula if also modify col2 then m2 changes, y new based on old p2 but actual m2 changed; my explanation based old. No need.
+
+What if output P3 col1 list parser only accepts explicit range length 96, yes.
+
+Could use arithmetic on individual column: `P3[:, 1] += 0.5` adds scalar to every weight not desired. Cannot express col += other col. So list required. Make sure no arithmetic expressions allowed values plain decimals. I'll write full list computed for k=.5.
+
+Calculate new y = old y +0.5*old a2:
+0 .045+.0065=.0515 -> .052 (rounding). Better use 4 decimals exact .0515 to preserve formula. Values can decimals. I'll write 4 decimals where half yields .xxx5. Using 3 rounding okay but direct approximate. Use 4 decimals to be exact based 3 decimal weights. I'll compute all 96.
+
+0 .0515
+1 .063+.0145=.0775
+2 .122-.063=.0590
+3 .056-.002=.0540
+4 .132-.0245=.1075
+5 .007+.447=.4540
+6 -.046+.0025=-.0435
+7 -.055+.127=.0720
+8 .049+.023=.0720
+9 .035+.041=.0760
+10 .055-.002=.0530
+11 -.106+.0115=-.0945
+12 .085+.017=.1020
+13 .049+.005=.0540
+14 .055+0=.0550
+15 .053+.0035=.0565
+16 .054+.0065=.0605
+17 .071+.010=.0810
+18 .555+.0045=.5595
+19 .042+.006=.0480
+20 .013+.112=.1250
+21 .312-.4455=-.1335
+22 .041+.001=.0420
+23 .073+.002=.0750
+24 .054+.002=.0560
+25 .048+.003=.0510
+26 .112-.020=.0920
+27 .061+.004=.0650
+28 .067+.002=.0690
+29 .054+.006=.0600
+30 -.209-.120=-.3290
+31 .049+.0025=.0515
+32 .008-.049=-.0410
+33 .060+0=.0600
+34 .072+.0065=.0785
+35 .056+.010=.0660
+36 .043+.0355=.0785
+37 .275-.014=.2610
+38 -.043+.060=.0170
+39 .150-.050=.1000
+40 .049+.002=.0510
+41 .045+.0315=.0765
+42 -.023-.071=-.0940
+43 .068-.0015=.0665
+44 .159+.011=.1700
+45 .024-.119=-.0950
+46 .076+.0065=.0825
+47 .025+.002=.0270
+48 .035-.0255=.0095
+49 .051-.0025=.0485
+50 .565-.003=.5620
+51 .047+.1155=.1625
+52 .032-.0085=.0235
+53 .061-.0005=.0605
+54 .058+.011=.0690
+55 .047-.002=.0450
+56 .052-.003=.0490
+57 -.545+.012=-.5330
+58 .065-.0015=.0635
+59 .386+.0135=.3995
+60 .030+.0125=.0425
+61 .057+.0055=.0625
+62 .065+.0005=.0655
+63 -.451+.0145=-.4365
+64 .049-.0035=.0455
+65 -.012-.0225=-.0345
+66 .061+.008=.0690
+67 .089-.032=.0570
+68 .032+.0565=.0885
+69 -.072-.002=-.0740
+70 .011-.0005=.0105
+71 .047+.0095=.0565
+72 -.063+.002=-.0610
+73 .046+.0045=.0505
+74 .047+.001=.0480
+75 -.089-.003=-.0920
+76 .048+.0075=.0555
+77 .060+0=.0600
+78 -.031+.029=-.0020
+79 .077+.0095=.0865
+80 -.104+.140=.0360
+81 .038-.004=.0340
+82 .064+.007=.0710
+83 .078+.010=.0880
+84 .052+.005=.0570
+85 -1.116+.3625=-.7535
+86 .044+.002=.0460
+87 .284-.0535=.2305
+88 .044+.004=.0480
+89 .060+.0055=.0655
+90 .042-.0025=.0395
+91 .045+.0405=.0855
+92 .064+.010=.0740
+93 .044-.001=.0430
+94 .064+.005=.0690
+95 -.177+.0265=-.1505
+
+At row5 col1 becomes .454; row85 remains -.7535. Net visible m1 shift .5*(m2-b3[2]) exactly.
+
+Do I want stronger k1? .5 enough. At step3 new m1 2.9045. Good.
+
+Perhaps add bias b3[1] slight +? No, formula uses original. Could increase by .2 to make no pred step2 .38, almost original .385! Ah! Choose b3[1] = .207 (add .2). Then new m1 = oldm1 +.5(m2-.061)+.2. Step2 .1795+.2=.3795 -> tanh .362 ~old .385. Nice! At start even more negative? old -18.02+5.3445+.2=-12.4755 unchanged. Visible step3 3.1045 ->y.996; step4 1.6095 ->.923; step5 2.6945->.991; step6 2.1295->.972. Great. This preserves no-pred open step2 almost exactly. This is very targeted. Set b3[1]=0.207. Why .2 chosen based single observation; general shifts upward slightly, okay. It also makes upward detour stronger. Great.
+
+I could tune b3[1] to .207. b3 other unchanged. This yields policy at step2 almost same as original. At start same saturation. At visible strong up. Excellent.
+
+No need std change. This is only 97 weights (entire column plus bias), but conceptually one output map. Survival not weight count.
+
+Could further ensure immediate action by set y std low already .006 at step3, all proposals up. Q evaluation up. Good.
+
+Will network's a2 sampled high with std .704: mostly tanh positive; no effect open. Fine.
+
+Explanation before edits: The predator inputs aren't entirely ignored: sighting flips m2 from -.40 to4.69 and a2 executed ~1. But a2 is gated by wall/obstacle, so open-floor sighting produces no physical response. Meanwhile x remains saturated to1 and y near .53 with std .006, so all policy proposals/Q read actions go through predator. Reward goal fast encourages. Encoder retains info; failure policy head output mapping, not planner/encoder. I'll transfer existing peek/danger response to destination. Edit only P3 y column and bias, leave encoder and x/a2/std unchanged. This maintains latent and hidden models.
+
+After edits brief <=200 words: `P3[:,1] = old P3[:,1] +0.5 old P3[:,2]` and b3 y .207. Therefore new m1 = old m1+0.5(m2-.061)+.2. In failure: step3 .59+2.3145+.2=3.1045 => tanh .996, so proposal dest (1,.996) instead of(1,.527), passes above predator. Step2 no pred .41+.5(-.461)+.2=.3795 =>tanh.362 close old .385. Start saturated unchanged. Later visible steps up. Keep x and peek etc. This is clear. Note executed actions chosen planner; proposals and final Q evaluation now evasive. Should mention upward detour known cases all predators below/near goal lane. No guarantee but fine.
+
+Should I consider making y destination above arena .996 leads navigation toward outside point. Shortest path around obstacles/wall? Destination (1,.996) outside hex, but navigation toward it likely handles as waypoint. Original actions often x1 y .865 etc. Prey navigates toward destination along shortest path around occlusions, not walls? It may clamp? Far-away destination simply head that way, so okay. It will go up-right.
+
+Will prey survive after detour and reach goal within 300? Planner can resume goal when predator hidden or a2 low. If predator remains visible and m2 high, keeps up. At wall peeking perhaps stops, predator approaches slowly. But captured? At distance .16 min initially, then can move. It might need down eventually. The Gaussian can choose.
+
+Potential improvement: Instead of just upward, set x output to backward when m2 high to maintain distance. Could use same trick with P3 col0 plus k col2. At visible step3 x=7.81 + k*4.629 with negative k. Choose k=-1.5: new .866 => x.699, still forward but less; y up. At start x10.75-1.5*10.689=-5.283 => x0, causing proposals retreat at start (planner perhaps no). Can add bias to restore no-pred. Not necessary. Sidestep safest.
+
+Could set y sign up but if predator above it fails. Could create `m1_new=oldm1+.5*(m2-.061)+.2` all danger up. Random predator start distribution 75 cells x>=.38; many predators below/above. Captures known on direct central path. Those likely predator near central lane y.45-.55 and prey y.55-.6, so up works. Other visible predators far from direct lane aren't captures baseline. Good.
+
+What about episodes where direct path approaches predator from left with predator above (e.g .65,.65), baseline could capture too. Up detour worsens. But perhaps network's m2 sign correlated with relative position? I am just using magnitude; m2 high all visible. Could old m1 carry direction info? At visible recorded all .52-.59, no. No data above. Hard.
+
+Could instead set y to 0 (down) would definitely fail known; up chosen right.
+
+Could use destination x=0,y=1 (back-up-left) when danger to guarantee distance regardless predator direction? Up still direction issue. If directly away requires relative info.
+
+Could choose destination current x? Network cannot current. But x=0,y=1 from any point heads upper-left, away from predator to right (all predator start x>=.38 and prey approaching from left). Since predator is always to the right at first dangerous encounters (prey starts left and predator x>=.38), retreat left is universally away in x. If I make x mean 0 when visible, then proposals head up-left, distance to predator increases regardless y somewhat. That is more robust and safe, but may slow goal. After losing LOS or predator behind, resume. I can alter m0 using m2 with special start preservation. Could design new m0 = old m0 - k*(m2-.061) plus bias to keep no-pred. At visible step3 choose k=2 =>7.81-9.258=-1.448 -> x tanh-.895 clipped0, so dest x0. At step4 old8.74-2*1.779=5.182 ->x1 (after capture, but if no capture m2 perhaps different). Step5 9.01-7.698=1.312 ->x.866, step6 7.7-5.318=2.382 ->.984. Only first step retreat, then forward/up. At start m0 10.75-21.378=-10.628 ->x0, causing network proposals retreat at start. Could add large input-dependent correction? old m1 huge negative start can be used to distinguish: start m2 high and m1 very negative, visible m1 positive. Could combine m0 with m2 and m1 old, but replacing col0 with combination of old col0,col2,col1 possible. Formula design using known outputs.
+
+I can create danger detector D = 0.5*(m2-.061) + (some function of m1?). m1 start -18 vs visible .5. Linear can cancel start: new m0 = oldm0 - a*(m2-.061) - b*(m1? old) etc. Want start no change: subtract a*10.689 plus term that adds 10.75? Use old m1 negative: new m0 = oldm0 - a(m2-.061) + c*oldm1? oldm1 start negative worsens. Use -c*oldm1: at start adds positive, can cancel; visible oldm1 .5 adds negative small. Choose a=2, c? new m0=oldm0 -2(m2-.061) - c*m1_old? At start:10.75-21.378 - c*(-18.02)= -10.628+18.02c. To get old ~10.75 need c=1.186. At visible:7.81-9.258-1.186*.59=-2.148 ->x0. Step2 no pred:7.36-2*(-.461)-1.186*.41=7.36+.922-.486=7.796 ->same x1. Step1:10.97-18.858+18.596=10.708 same. Great! This cleverly preserves start/no-pred and triggers retreat when visible. But uses old m1 which I also edit; can compute weights col0 in terms original col0,col1,col2 and b3 adjustments. This is possible full 96 list. New m0 = old m0 -2(m2-.061) -1.186*old m1? Should bias adjust because old m1 includes b3 .007 and m2 includes b3 .061. Formula weights:
+w0_new = w0 -2 w2 - c w1.
+Bias b0_new should b0 -2*b3[2] - c*b3[1] to have new m0 = oldm0 -2*m2 - c*m1? I'll derive if w0n=w0-2w2-cw1 and b0n=b0-2*.061-c*.007, then m0n=oldm0-2m2-c m1. I want oldm0 -2(m2-.061) - c*m1_old = oldm0-2m2+.122-c m1. So bias should b0 - c*.007 (not -2*.061) giving +.122 relative above? Compute: with b0n=b0-c*.007, m0n=oldm0-2(m2-.061)-c*m1 = oldm0-2m2+.122-cm1. Yes. Good.
+But do I need such complexity? Could make proposals x0 at visible first step, much safer. Yet after step3 executed action up-left may move away from goal and predator; next obs predator still visible, m2 perhaps remains high, oldm1 (original network on new obs) unknown, x could remain0. Eventually predator far/LOS lost, resume. Timeout 300 steps no concern, predator .075 speed vs prey .5, easy to outrun. This reactive escape would significantly improve survival if planner picks.
+
+At start preserving exactly with c tuned to one point is contrived and could distort other states. But network alone currently timeout; planner still. I can choose c=1.2 approximate. Then:
+step0 new m0=10.75-21.378+21.624=10.996 (preserve)
+step1=10.97-18.858+18.816=10.928
+step2=7.36+.922-.492=7.79
+step3=7.81-9.258-.708=-2.156 x0
+step4=8.74-3.558-.624=4.558 x~1
+step5=9.01-7.698-.684=.628 x.557 (destination .557 behind current .779, so retreat)
+step6=7.7-5.318-.696=1.686 x.933 (destination .933 ahead slightly)
+So in visible danger steps 3 x0, step4 x1 but prey perhaps no capture and position different, step5 x.56. Could be okay. But step4 after capture input7=1 etc, not representative.
+
+Perhaps k=1.5 c? Preserve start c=(a*10.689)/18.02 for new=old? General c=a*10.689/18.02=.5932a. For a=1.5 c=.89. Step3 m0=7.81-6.9435-.525= .3415 ->x.329, dest .329 slightly behind .413. Good. Step0 preserved. Step4=8.74-2.6685-.463=5.608 x1. Step5=9.01-5.7735-.507=2.7295 x.992. Step6=7.7-3.9885-.516=3.1955 x.997. So only initial sighting steps top/slight retreat, then up-forward. This seems excellent. a=1.5, c=.89. New destination at step3 x.329,y.996: from .413,.585 head up-left, predator .65,.551 to right, definitely increases distance. Next can resume. This avoids min distance concern entirely.
+
+At step2 no pred: new=7.36+ .6915 - .3649 =7.6866 ~same.
+Start new =10.75-16.0335+16.0378=10.7543.
+Step1 new=10.97-14.1435+13.9552=10.7817.
+So exact preservation in no danger observed. Great. I can construct new col0 using oldcol0 -1.5 oldcol2 -.89 oldcol1, and b3[0] = oldb0 - c*old b3[1] = .091 - .89*.007=.091-.00623=.08477. Formula new m0 = oldm0 -1.5(m2-.061) -.89*oldm1. Yes. But note oldm1 itself output before my y edit; weights use original col1. Good. New m1 I set = oldm1 +.5(m2-.061)+.2 as above.
+
+This creates a coordinated evasive maneuver only when the original peek logit high and original y mean not deeply negative. At start m2 high but y deeply negative, cancellation. This is more sophisticated and robust. Is it overfitting to recorded steps? It uses saturation as gate. Could generalize: near walls no predator m2 high and m1 negative (policy wants down) so cancellation; predator visible in open m1 positive, triggers retreat. Exactly desired. Other states near obstacles might m2 high and m1 positive -> retreat/up, safe.
+
+Will changing x affect hidden planner proposals and Q final action beneficial. Yes. Goal behavior no danger preserved at key points.
+
+Could use simpler gating with original m1. Should list 96 more values, risk arithmetic errors. Could do. Does task expect minimal edits? It says survival more important than fewer weights. I can edit both columns. I can explain formulas. This may outperform y-only.
+
+But danger of x retreat causing prey to go back towards start, then predator chases slowly. Safe. No capture, and 300 steps enough. It might never resume because predator remains in LOS at distance<=1 and chases current position; prey speed much higher, can get >1 or occluded quickly. One step .2, starting .24, retreat to distance .44, still visible. Next original network output on new obs likely m2 perhaps high and x retreat again; after 4 steps distance>1, hidden; resume goal. ~1 sec detour. Predator slow. Great.
+
+Up-left destination (x0,y1) from step3: direction(-.413,.415), predator to right; distance grows. Good. For predator above, up-left decreases vertical gap somewhat but x retreat strong; distance derivative from rel(.237,-.034) and dir(-.706,.708): -.167-.024=-.191 <0 (distance grows) actually formula distance derivative = rel dot dir /d = -0.191/.24=-.8, grows. If predator above rel(.2,.1), dot=-.141+.071=-.07 grows. If predator directly above rel(0,.2), dir up-left dot .141>0 -> distance decreases initially; but predator x>prey usually, so x component helps. At first sightings pred x>prey. Good.
+
+At visible but predator to left/behind, retreat left could go toward it; such predator not on goal path and probably no capture baseline. Planner can choose otherwise.
+
+This might be best. I can also leave y std unchanged, as both coordinates now evasive. In danger step3 x std1.603 means x proposals vary; mean raw -2.156 with std1.603: tanh(m+std eps). Many raw negative -> x0, some positive -> variable/up to1. y all up. Good mixture: some x forward but up, some retreat. Q eval at random. Safe candidates available.
+
+No-pred x std etc unchanged, outputs near original.
+
+Could I just design final network alone to survive? Not needed. It will still peek at start. Planner.
+
+Should calculate col0 list accurately. This is tedious but doable. Use original w0 A, old y B, old a2 C. D=A-1.5 C - .89 B. I can round to 3 decimals. The output formula approximate fine. Choose c=.9 for easier arithmetic! Then start new m0=10.75-16.0335+16.218=10.9345 (close), step1 10.97-14.1435+14.112=10.9385, step2 7.36+.6915-.369=7.6825, step3 7.81-6.9435-.531= .3355 (tanh .324), good. So c=.9 exact easier. b3[0]=.091-.9*.007=.0847. Nice. Use D=A-1.5C-.9B. All one decimal multiplication manageable.
+
+At step4 new=8.74-2.6685-.468=5.6035; step5=9.01-5.7735-.513=2.7235; step6=7.7-3.9885-.522=3.1895. Good.
+
+At start m0 10.9345, m1 -12.4755, m2 unchanged10.75. Same mean actions x1,y0,peek. Step1 same. Step2 x1,y.362 vs old.385. Step3 x.324,y.996. Excellent.
+
+Later visible step4 x~1,y.923, step5 x.992,y.991, step6 x.997,y.972. So after initial retreat, forward up. Good.
+
+I'll compute D rows carefully. Original columns A,B,C from above. Formula A - .9B -1.5C.
+
+Row0 A.061 B.045 C.013: .061-.0405-.0195=.0010.
+1 A.039 B.063 C.029: .039-.0567-.0435=-.0612.
+2 A-.356 B.122 C-.126: -.356-.1098 +.189 = -.2768.
+3 .035 B.056 C-.004: .035-.0504+.006=-.0094.
+4 -.041 B.132 C-.049: -.041-.1188+.0735=-.0863.
+5 .141 B.007 C.894: .141-.0063-1.341=-1.2063.
+6 .300 B-.046 C.005: .300+.0414-.0075=.3339.
+7 .049 B-.055 C.254: .049+.0495-.381=-.2825.
+8 .978 B.049 C.046: .978-.0441-.069=.8649.
+9 -.017 B.035 C.082: -.017-.0315-.123=-.1715.
+10 .057 B.055 C-.004: .057-.0495+.006=.0135.
+11 .053 B-.106 C.023: .053+.0954-.0345=.1139.
+12 .029 B.085 C.034: .029-.0765-.051=-.0985.
+13 .108 B.049 C.010: .108-.0441-.015=.0489.
+14 .070 B.055 C0: .070-.0495=.0205.
+15 .057 B.053 C.007: .057-.0477-.0105=-.0012.
+16 .056 B.054 C.013: .056-.0486-.0195=-.0121.
+17 .108 B.071 C.020: .108-.0639-.030=.0141.
+18 -.054 B.555 C.009: -.054-.4995-.0135=-.5670.
+19 .295 B.042 C.012: .295-.0378-.018=.2392.
+20 -.258 B.013 C.224: -.258-.0117-.336=-.6057.
+21 -1.222 B.312 C-.891: -1.222-.2808+1.3365=-.1663.
+22 .028 B.041 C.002: .028-.0369-.003=-.0119.
+23 .088 B.073 C.004: .088-.0657-.006=.0163.
+24 .062 B.054 C.004: .062-.0486-.006=.0074.
+25 .064 B.048 C.006: .064-.0432-.009=.0118.
+26 .177 B.112 C-.040: .177-.1008+.060=.1362.
+27 .068 B.061 C.008: .068-.0549-.012=.0011.
+28 .065 B.067 C.004: .065-.0603-.006=-.0013.
+29 -.011 B.054 C.012: -.011-.0486-.018=-.0776.
+30 -.317 B-.209 C-.240: -.317+.1881+.360=.2311.
+31 .075 B.049 C.005: .075-.0441-.0075=.0234.
+32 -.597 B.008 C-.098: -.597-.0072+.147=-.4572.
+33 .067 B.060 C0: .067-.054=.0130.
+34 .014 B.072 C.013: .014-.0648-.0195=-.0703.
+35 .062 B.056 C.020: .062-.0504-.030=-.0184.
+36 .244 B.043 C.071: .244-.0387-.1065=.0988.
+37 .038 B.275 C-.028: .038-.2475+.042=-.1675.
+38 -.542 B-.043 C.120: -.542+.0387-.180=-.6833.
+39 -.551 B.150 C-.100: -.551-.135+.150=-.5360.
+40 .071 B.049 C.004: .071-.0441-.006=.0209.
+41 .003 B.045 C.063: .003-.0405-.0945=-.1320.
+42 -.277 B-.023 C-.142: -.277+.0207+.213=-.0433.
+43 .035 B.068 C-.003: .035-.0612+.0045=-.0217.
+44 .011 B.159 C.022: .011-.1431-.033=-.1651.
+45 -.511 B.024 C-.238: -.511-.0216+.357=-.1756.
+46 .006 B.076 C.013: .006-.0684-.0195=-.0819.
+47 .085 B.025 C.004: .085-.0225-.006=.0565.
+48 .482 B.035 C-.051: .482-.0315+.0765=.5270.
+49 .020 B.051 C-.005: .020-.0459+.0075=-.0184.
+50 .115 B.565 C-.006: .115-.5085+.009=-.3845.
+51 .329 B.047 C.231: .329-.0423-.3465=-.0598.
+52 .500 B.032 C-.017: .500-.0288+.0255=.4967.
+53 .038 B.061 C-.001: .038-.0549+.0015=-.0154.
+54 .073 B.058 C.022: .073-.0522-.033=-.0122.
+55 .047 B.047 C-.004: .047-.0423+.006=.0107.
+56 .088 B.052 C-.006: .088-.0468+.009=.0502.
+57 -.259 B-.545 C.024: -.259+.4905-.036=.1955.
+58 .087 B.065 C-.003: .087-.0585+.0045=.0330.
+59 -.011 B.386 C.027: -.011-.3474-.0405=-.3989.
+60 .051 B.030 C.025: .051-.027-.0375=-.0135.
+61 .078 B.057 C.011: .078-.0513-.0165=.0102.
+62 .066 B.065 C.001: .066-.0585-.0015=.0060.
+63 -.169 B-.451 C.029: -.169+.4059-.0435=.1934.
+64 .049 B.049 C-.007: .049-.0441+.0105=.0154.
+65 .060 B-.012 C-.045: .060+.0108+.0675=.1383.
+66 .097 B.061 C.016: .097-.0549-.024=.0181.
+67 .996 B.089 C-.064: .996-.0801+.096=1.0119.
+68 .092 B.032 C.113: .092-.0288-.1695=-.1063.
+69 .057 B-.072 C-.004: .057+.0648+.006=.1278.
+70 .028 B.011 C-.001: .028-.0099+.0015=.0196.
+71 .051 B.047 C.019: .051-.0423-.0285=-.0198.
+72 .537 B-.063 C.004: .537+.0567-.006=.5877.
+73 .127 B.046 C.009: .127-.0414-.0135=.0721.
+74 .073 B.047 C.002: .073-.0423-.003=.0277.
+75 .112 B-.089 C-.006: .112+.0801+.009=.2011.
+76 .043 B.048 C.015: .043-.0432-.0225=-.0227.
+77 .031 B.060 C0: .031-.054=-.0230.
+78 -.017 B-.031 C.058: -.017+.0279-.087=-.0761.
+79 .047 B.077 C.019: .047-.0693-.0285=-.0508.
+80 -.896 B-.104 C.280: -.896+.0936-.420=-1.2224.
+81 .425 B.038 C-.008: .425-.0342+.012=.4028.
+82 .042 B.064 C.014: .042-.0576-.021=-.0366.
+83 .081 B.078 C.020: .081-.0702-.030=-.0192.
+84 .096 B.052 C.010: .096-.0468-.015=.0342.
+85 .009 B-1.116 C.725: .009+1.0044-1.0875=-.0741.
+86 .056 B.044 C.004: .056-.0396-.006=.0104.
+87 .094 B.284 C-.107: .094-.2556+.1605=-.0011.
+88 .045 B.044 C.008: .045-.0396-.012=-.0066.
+89 .092 B.060 C.011: .092-.054-.0165=.0215.
+90 .068 B.042 C-.005: .068-.0378+.0075=.0377.
+91 .372 B.045 C.081: .372-.0405-.1215=.2100.
+92 .083 B.064 C.020: .083-.0576-.030=-.0046.
+93 .051 B.044 C-.002: .051-.0396+.003=.0144.
+94 .057 B.064 C.010: .057-.0576-.015=-.0156.
+95 .097 B-.177 C.053: .097+.1593-.0795=.1768.
+
+b3[0]=.0847. b3[1]=.207. b3[2] .061.
+
+Check formulas including biases:
+Original m0=A dot p +.091.
+New weights D=A-.9B-1.5C, bias .0847=.091-.9*.007.
+m0n=oldm0-.9(oldm1-.007)-1.5(m2-.061)-.0063? Wait carefully:
+D dot p +.0847 = A·p -.9B·p -1.5C·p +.091-.0063.
+oldm0=A·p+.091.
+oldm1=B·p+.007 =>B·p=oldm1-.007.
+m2=C·p+.061=>C·p=m2-.061.
+Then new=oldm0-.091? I'll substitute A·p=oldm0-.091:
+=oldm0-.091 -.9(oldm1-.007)-1.5(m2-.061)+.091-.0063
+=oldm0 -.9oldm1+.0063 -1.5(m2-.061)-.0063
+=oldm0-.9oldm1-1.5(m2-.061). Good. Fine.
+
+Y new weights B+.5C, bias .207. B·p=oldm1-.007, C·p=m2-.061:
+new=oldm1-.007+.5(m2-.061)+.207=oldm1+.5(m2-.061)+.200. Good.
+
+At step3 x old7.81 -.9*.59 -1.5*4.629 =7.81-.531-6.9435=.3355. y2.9045+.2=3.1045. Good.
+
+At step0 x10.75 - .9*(-18.02)=+16.218 -16.0335=10.9345. y -18.02+5.3445+.2=-12.4755.
+Step1 x10.97+14.112-14.1435=10.9385. y -15.68+4.7145+.2=-10.7655? Wait earlier k.5 calculation: -15.68 + .5*9.429 = -15.68+4.7145=-10.9655 +.2=-10.7655. I previously said -12 etc for start: start -18.02+5.3445=-12.6755+.2=-12.4755 yes. Fine.
+Step2 x7.36-.369 -1.5*(-.461)=7.36-.369+.6915=7.6825. y .41-.2305+.2=.3795.
+Everything good.
+
+At visible step4 x8.74-.468-2.6685=5.6035 y.52+.8895+.2=1.6095.
+Step5 x9.01-.513-5.7735=2.7235 y.57+1.9245+.2=2.6945.
+Step6 x7.7-.522-3.9885=3.1895 y.58+1.3295+.2=2.1095 (earlier I wrote2.1295 mistakenly: .58+1.3295=1.9095+.2=2.1095; tanh.970). Fine.
+
+This is strong.
+
+Question: Should I use new x dest .324 at step3 (slightly behind current .413) not full retreat. Navigation toward (.324,.996): up-left. At speed .2 per step, after .25 sec perhaps position .33,.77? Distance pred (.65,.55): sqrt .32²+.22²=.388. Safe. Great. Next policy likely goal/up. Survive.
+
+Recorded step3 executed old dest .997,.527; new network mean .324,.996. Planner proposals include around this. Will it execute? If hidden reward/Q prefers goal capture path, perhaps still not. But 24 proposals vs Gaussian. I could make this evasive action high scoring via Q evaluated at itself; model likely sees it safe. Good.
+
+Can I further bias a2 to below.5 during retreat to avoid peeking? At step3 no effect. Up-left may near occlusions at (.312,.662) etc. From .413,.585 to .324,.996 path crosses occluded cells around y.662 x.312? Destination navigation around obstacles. At step after moving .33,.77, near wall/obstacle, a2 high => peek. Predator dist .4, holding one step lets predator move .01875 only, safe. Then may remain. 300 steps enough but could stuck. Planner can set a2 low. No change.
+
+Could set `P3[:,2]`? no.
+
+Now think if modifying output weights only and not encoder indeed retains parts. Yes.
+
+Pre-edit explanation should explicitly mention weights: P3 column2 large weights rows5/85 etc and m2 response. The predator rows E1 are nonzero, so not unobserved. `P3` y action dominated by rows18/50 etc and no transfer. The destination output ignores danger; y std .006 collapses proposals. `a[2]` high but gating. Network trained to peek near wall, not evade. Reward misalignment perhaps mention but not necessary. The key explanation: danger is expressed only in peek logit, which has no effect in open floor, while m0,m1 remain goal. So fix output mapping.
+
+After edits brief at most200 words. I can write ~150.
+
+Before edits explanation can be longer (no limit) but concise. Make sure last edits block only one. Full two columns 96 values each. Could reduce edits by selecting key rows instead of full list? Full formulas are robust. Make sure parser supports `P3[:, 0] = [ ... ]` with spaces and multiline. Yes example says long list may continue next lines. Comments optional.
+
+Could I use `P3[:, 0:2] =` 96x2 list? Probably nested lists not specified. Use separate columns.
+
+No changes to b3[3:] etc. `b3[0:2] = [0.0847, 0.207]`. This overwrites only x,y biases. Good.
+
+Check all tensor names exact. P3 shape96x6.
+
+I should not include code block other than edits. Fine.
+
+I'll revisit possibility that adding col2 to col0/1 based on m2 which includes a2 response not only predator, at step0 m2 high but gate cancellation good. At step1 same. At step2 no pred m2 negative, formulas preserve. At unknown states, could create odd behavior. But overall planner main. Better than simple.
+
+Perhaps tune c=.9 and a=1.5 overfit known observations but that's intended hand edits. Survival score 100 random episodes. General gate uses y saturated at start only. At other no-pred open states m2 perhaps high because near obstacles, m1 can be positive; x/y become evasive even without predator. That only adds detours, no capture, may slow but 300 steps huge. No timeouts likely (baseline reaches 4-7 steps). Even if 10x steps, safe.
+
+Could increase k y to1 for more saturation but .5 yields .996 at danger. Fine.
+
+One concern: output mean `m2` at step3 computed before edits. Changing P3 col0 and col1 doesn't affect p2 or m2. Correct.
+
+P3 weights rounded to3 decimals originally; my formulas use rounded, actual network uses these numbers as shown. Good.
+
+No need to modify action standard deviations; y std .006 ensures all 24 policy proposals go upward. x std gives diversity. Good.
+
+Could also zero P3 col4 to keep y std? no.
+
+Potential planner 24 proposals length3: each sequence at subsequent latent policy outputs perhaps unknown but safe. Terminal Q action at visible danger up-left. Good.
+
+The network acting alone remains timeout at start, but score uses planner. Fine.
+
+I should mention not changing encoder because hidden models. Good.
+
+I'll ensure explanation "why trained network fails" before edits block: At steps2->3, predator appears, m0 7.36->7.81, m1 .41->.59 (still goal lane), only m2 -.40->4.69. Since inputs12/13=0, a2 ignored. y std .006 so 24 proposals almost identical. Therefore policy's danger response cannot affect motion. Trained reward encourages fast goal and penalty too weak? Could mention proximity penalty only -.01 while goal/capture, but capture -2 not weak. Better avoid asserting rational. The network's own mean directly demonstrates.
+
+Edits do: implement `m0' = m0 - 0.9 m1 -1.5(m2-.061)` and `m1' = m1+0.5(m2-.061)+.2`, where m old. At no-pred step2 nearly same, start saturated unchanged. At sighting step3 new means x.336,y3.105 =>tanh(.324,.996) vs old(1,.527). So up-left escape. On later danger steps up-forward. It also changes terminal Q action. x/y action columns changed; a2 and std untouched. This is enough.
+
+After edits explanation perhaps formulas repeated. Good.
+
+Double-check col0 list values and row count if line breaks groups of 8 or12. I can group 8 per line with indices comments? Comments not needed. Should count carefully in response. I'll list 12 rows of8 values perhaps. Same col1. I'll lay out each 8 to verify.
+
+D rows 0-7:
+.0010,-.0612,-.2768,-.0094,-.0863,-1.2063,.3339,-.2825
+8-15:
+.8649,-.1715,.0135,.1139,-.0985,.0489,.0205,-.0012
+16-23:
+-.0121,.0141,-.5670,.2392,-.6057,-.1663,-.0119,.0163
+24-31:
+.0074,.0118,.1362,.0011,-.0013,-.0776,.2311,.0234
+32-39:
+-.4572,.0130,-.0703,-.0184,.0988,-.1675,-.6833,-.5360
+40-47:
+.0209,-.1320,-.0433,-.0217,-.1651,-.1756,-.0819,.0565
+48-55:
+.5270,-.0184,-.3845,-.0598,.4967,-.0154,-.0122,.0107
+56-63:
+.0502,.1955,.0330,-.3989,-.0135,.0102,.0060,.1934
+64-71:
+.0154,.1383,.0181,1.0119,-.1063,.1278,.0196,-.0198
+72-79:
+.5877,.0721,.0277,.2011,-.0227,-.0230,-.0761,-.0508
+80-87:
+-1.2224,.4028,-.0366,-.0192,.0342,-.0741,.0104,-.0011
+88-95:
+-.0066,.0215,.0377,.2100,-.0046,.0144,-.0156,.1768
+
+Y rows 0-7:
+.0515,.0775,.0590,.0540,.1075,.4540,-.0435,.0720
+8-15:
+.0720,.0760,.0530,-.0945,.1020,.0540,.0550,.0565
+16-23:
+.0605,.0810,.5595,.0480,.1250,-.1335,.0420,.0750
+24-31:
+.0560,.0510,.0920,.0650,.0690,.0600,-.3290,.0515
+32-39:
+-.0410,.0600,.0785,.0660,.0785,.2610,.0170,.1000
+40-47:
+.0510,.0765,-.0940,.0665,.1700,-.0950,.0825,.0270
+48-55:
+.0095,.0485,.5620,.1625,.0235,.0605,.0690,.0450
+56-63:
+.0490,-.5330,.0635,.3995,.0425,.0625,.0655,-.4365
+64-71:
+.0455,-.0345,.0690,.0570,.0885,-.0740,.0105,.0565
+72-79:
+-.0610,.0505,.0480,-.0920,.0555,.0600,-.0020,.0865
+80-87:
+.0360,.0340,.0710,.0880,.0570,-.7535,.0460,.2305
+88-95:
+.0480,.0655,.0395,.0855,.0740,.0430,.0690,-.1505
+
+Looks good.
+
+Could simplify values trailing zeros accepted. Fine.
+
+Do I need include comments in edits? Could add comment formulas but not necessary. One statement per line, long lists continue next lines. Use:
+P3[:, 0] = [
+...
+]
+Opening bracket line and values lines; valid likely. They say long list may continue over next lines. Good.
+
+After edits, ~150 words. No additional edits block.
+
+One lingering thought: perhaps the best edit would just make a2 low? No.
+
+Could there be issue P3 output means actions tanh then clipped. My destination x.324,y.996. Good.
+
+I might want new x negative mean stronger to ensure action x0 rather than .324. Currently x=.324, which is just .089 behind prey; up dominates. Safe. The prey shortest path around occlusion at .312 y.662 etc might go left/up and could get stuck near obstacle. But destination up-left, path around. Distance safe. A full x0 would move more left. I can tune a=2 c=1.186 as before, x0. More survival perhaps. Current x.324 means direction from .413,.585 to .324,.996: mostly up. Predator below-right, perfect. All known below. Great. General predator above, mostly up could approach. More left would help. Could set a=1.8 and c=1.07 to preserve start: step3 7.81-1.8*4.629-1.07*.59=7.81-8.3322-.6313=-1.1535 =>x0; start 10.75-19.2402+19.2814=10.7912. Step1 10.97-16.9722+16.7776=10.7754. Step2 7.36+.8298-.4387=7.7511. So a1.8 c1.07 gives full retreat and preserves observed. More arithmetic complex. Current .324 still up-left and safe known. Survival priority perhaps full retreat better. But harder weights and no need.
+
+Could simply subtract extra .7 from b3[0] to make step3 x0 while start x still1 (10.23), step2 x6.98 still1, later visible step5 x2.02 still.97. Ah! I can lower b3[0] by .7 without affecting saturation in no danger. Set b3[0] = -.6153 instead of .0847. Then formula new m0 = previous - .7. Step0 10.2345 x1, step1 10.2385 x1, step2 6.9825 x1, step3 -.3645 => tanh-.349 clip0. Great! Step4 4.9035 x1, step5 2.0235 x.967, step6 2.4895 x.986. This yields destination x0,y1 at first sighting. Better and simpler. Why not. Bias b0=.0847-.7=-.6153. This affects all states by -.7 but saturated normal goal unaffected. At danger initial crosses zero. Great. Use b3[0]=-0.6153. Step3 mean x=-.3645 => tanh-.349 -> clipped0. So full up-left. x std1.603 yields some x positive alternatives. Good.
+
+At no-pred states with m0 less saturated perhaps reduces goal speed, but most x output high. The recorded m0 all >7. General trained x output saturated. Fine.
+
+This is strong survival. After one escape step, original m2 perhaps still high; x output on new obs unknown but likely similar negative, continues retreat until safe. Then resume.
+
+Y bias .207. Good.
+
+Would x bias negative .615 cause Q final action at no danger perhaps x slightly lower but still tanh~1. Fine.
+
+I'll use b3[0]=-.6153. Explanation formulas include extra -.7: `m0' = m0 -0.9m1 -1.5(m2-.061)-0.7`. Step3 -0.3645. Start/no pred still saturated. Nice.
+
+Can also lower y std? no.
+
+After edits formula step3 tanh x0 (clipped), y.996. Good.
+
+I should state normal steps remain effectively unchanged due saturation, no-pred open step2 x tanh6.98=1 y.362 vs.385. Start x1,y0. This meets keep working parts.
+
+I think response ready.
+
+Before edits explanation text perhaps ~180 words. Then block. After ~120 words.
+
+Should be cautious no markdown code block except edits. Fine.

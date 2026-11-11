@@ -1,0 +1,17 @@
+**Calibrating weights**
+
+I need to work with weights by quoting each row and then calibrating them. It seems like I should identify the largest coefficient in a single row, which is the only one greater than 1. Instead of focusing on the entire row max norm, I'll consider relative input headings and typical row sizes between 0.01 and 0.1. My approach is to use the maximum absolute and selected outliers without needing a calculator.**Exploring visibility in navigation**
+
+I’m thinking about whether "hide and seek" incorporates intentional rewards. If catching is just a task, maybe holding an ambush is learned behavior, which might play into obstacle navigation and path planning. The concept of macro action in navigation implies that policy doesn’t need to focus on its own heading, just visibility. If the line-of-sight is omnidirectional, then that could redefine visibility-change scores and how obstacles affect heading, like with field of view cones.**Evaluating inference dynamics**
+
+The encoder includes dynamics, not just pure relevance, which complicates inferring strategies. Since the weights don’t carry semantic labels or true rewards, we can’t provide exact measures. We should definitely answer in a clear format. For example, if the user asks for the likelihood of a hypothesis, a numeric confidence like 30% is more straightforward rather than vague language. It’s helpful to explain that the interpretation relies on broad definitions rather than specific weights.**Exploring options for strategy**
+
+I’m considering several alternatives: one involves pursuit or tagging, where the seeker adjusts to the opponent’s position and obstacles. Ambushing or intercepting could be options, but there’s a lack of evidence for that. A central retrieval strategy is uncertain since coordinates could be redundant. Pure maze navigation or open-field exploration are still on the table, as the encoder can encode dynamics. However, the controlled hider role seems ruled out by the premise of a pursuing scenario.**Considering game concepts**
+
+I’m thinking about whether the term "occluded tag" works for this dynamic hide-and-seek game. It involves active movement and visual occlusion. I like "Visual pursuit–evasion," where players chase the evader around obstacles without additional rewards. 
+
+I want to clarify how rewards might work and consider the number of sentences. Maybe it's best to assert my confidence in the game's description without detailing all numbers. 
+
+It feels like there’s a lot to unpack about the table's statistics, but I think I can derive useful insights from it.**Drafting encoder analysis**
+
+I’m working through the details of the encoder’s performance, assessing how neither "catches" nor "home distance" seems to dominate the row norms. It looks like my theta weights might be scaled quite differently. I noticed that the prior for the returning-home task isn’t set up properly. I want to avoid overgeneralizing, so I think two paragraphs should cover it. Now, I’ll get started on drafting a clearer explanation.
