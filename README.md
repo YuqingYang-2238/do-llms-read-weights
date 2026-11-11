@@ -1,5 +1,8 @@
 # Do LLMs read the weights?
 
+**Replicating and testing whether LLMs can read and write neural network weights directly: a case study on a
+predator-prey task.**
+
 *By [YuqingYang-2238](https://github.com/YuqingYang-2238), November 2026*
 
 A recent post, [Sparks of Weight-Space Programming](https://rikiyat.github.io/blog/weight-space-programming/) by Takehi,
